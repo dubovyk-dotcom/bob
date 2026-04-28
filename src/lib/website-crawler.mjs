@@ -1,30 +1,14 @@
 const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
 const URL_REGEX = /https?:\/\/[^\s"'<>]+/gi;
+const PHONE_REGEX = /(?:\+?\d{1,3}[\s.-]?)?(?:\(?\d{2,4}\)?[\s.-]?)\d{3,4}[\s.-]?\d{3,4}/g;
 
-const RELEVANCE_PATTERNS = {
-  high: [
-    /\bj-?1\b/i,
-    /ds-?2019/i,
-    /work\s*(and|&)\s*travel\s*usa/i,
-    /exchange\s*visitor/i,
-    /internship\s*abroad/i,
-    /sponsor(ship|ed)?\s*program/i
-  ],
-  medium: [
-    /hospitality\s*(trainee|training|internship)/i,
-    /culinary\s*(internship|training)/i,
-    /tourism\s*training/i,
-    /international\s*student\s*(work|placement)/i,
-    /overseas\s*(placement|recruitment)/i
-  ],
-  low: [
-    /recruit(ment|ing)/i,
-    /placement\s*services/i,
-    /travel\s*agency/i,
-    /work\s*abroad/i,
-    /apply\s*now/i
-  ]
+const INTENT_KEYWORDS = {
+  high: ['j1', 'exchange visitor', 'ds-2019', 'bridgeusa', 'work and travel usa', 'visa sponsor', 'seasonal work usa', 'camp counselor'],
+  medium: ['internship usa', 'hospitality placement', 'culinary training', 'trainee program', 'student jobs abroad', 'cultural exchange'],
+  low: ['overseas recruitment', 'work abroad', 'placement agency', 'travel agency', 'au pair']
 };
+
+const FIXED_PATHS = ['/contact', '/about', '/apply', '/careers', '/jobs', '/internships'];
 
 function normalizeWebsiteUrl(url) {
   if (!url) return null;
@@ -44,11 +28,19 @@ function extractEmails(text) {
   return [...new Set(matches.map((e) => e.toLowerCase()))].filter((e) => !e.endsWith('.png') && !e.includes('example.com'));
 }
 
+function extractPhones(text) {
+  const matches = text.match(PHONE_REGEX) || [];
+  return [...new Set(matches.map((p) => p.trim()))].filter((p) => p.replace(/\D/g, '').length >= 8);
+}
+
 function extractSocialLinks(text) {
   const urls = text.match(URL_REGEX) || [];
-  const facebook = urls.find((u) => /facebook\.com/i.test(u)) || null;
-  const instagram = urls.find((u) => /instagram\.com/i.test(u)) || null;
-  return { facebook, instagram };
+  return {
+    facebook: urls.find((u) => /facebook\.com/i.test(u)) || null,
+    instagram: urls.find((u) => /instagram\.com/i.test(u)) || null,
+    linkedin: urls.find((u) => /linkedin\.com/i.test(u)) || null,
+    whatsapp: urls.find((u) => /wa\.me|whatsapp\.com/i.test(u)) || null
+  };
 }
 
 function makeAbsoluteUrl(url, base) {
@@ -62,6 +54,7 @@ function makeAbsoluteUrl(url, base) {
 function extractLinks(html, baseUrl) {
   const hrefRegex = /href=["']([^"'#]+)["']/gi;
   const contactApplyPages = [];
+  const formPages = [];
   const mailto = [];
   let match;
 
@@ -74,118 +67,188 @@ function extractLinks(html, baseUrl) {
       continue;
     }
 
-    if (/(contact|about|apply|join|recruit|program|internship)/i.test(lower)) {
+    if (/(contact|about|apply|join|recruit|program|internship|career|job|form)/i.test(lower)) {
       const abs = makeAbsoluteUrl(href, baseUrl);
       if (abs) contactApplyPages.push(abs);
     }
+
+    if (/(apply|contact|join|register|form)/i.test(lower)) {
+      const abs = makeAbsoluteUrl(href, baseUrl);
+      if (abs) formPages.push(abs);
+    }
   }
 
-  return { contactApplyPages: [...new Set(contactApplyPages)].slice(0, 6), mailto };
+  return {
+    contactApplyPages: [...new Set(contactApplyPages)],
+    formPages: [...new Set(formPages)],
+    mailto
+  };
 }
 
-async function fetchText(url, userAgent) {
-  try {
-    const response = await fetch(url, {
-      redirect: 'follow',
-      headers: { 'User-Agent': userAgent }
-    });
+async function fetchTextWithRetry(url, userAgent, debugLog, retries = 2) {
+  for (let attempt = 1; attempt <= retries + 1; attempt += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12000);
 
-    if (!response.ok) return null;
+    try {
+      const response = await fetch(url, {
+        redirect: 'follow',
+        headers: {
+          'User-Agent': userAgent,
+          Accept: 'text/html,application/xhtml+xml'
+        },
+        signal: controller.signal
+      });
 
-    const type = response.headers.get('content-type') || '';
-    if (!type.includes('text/html') && !type.includes('text/plain')) return null;
+      if (!response.ok) {
+        debugLog('crawl.http_error', { url, status: response.status, attempt });
+        continue;
+      }
 
-    return response.text();
-  } catch {
-    return null;
+      const type = response.headers.get('content-type') || '';
+      if (!type.includes('text/html') && !type.includes('text/plain')) {
+        debugLog('crawl.skipped_non_text', { url, type, attempt });
+        return null;
+      }
+
+      const text = await response.text();
+      debugLog('crawl.success', { url, attempt, bytes: text.length });
+      return text;
+    } catch (error) {
+      debugLog('crawl.error', { url, attempt, error: error.message });
+      if (attempt === retries + 1) return null;
+    } finally {
+      clearTimeout(timer);
+    }
   }
+
+  return null;
+}
+
+function keywordHits(textBlob) {
+  const lowered = (textBlob || '').toLowerCase();
+  const hits = { high: [], medium: [], low: [] };
+
+  for (const tier of ['high', 'medium', 'low']) {
+    for (const keyword of INTENT_KEYWORDS[tier]) {
+      if (lowered.includes(keyword)) hits[tier].push(keyword);
+    }
+  }
+
+  return hits;
 }
 
 function scoreRelevance(textBlob) {
-  if (!textBlob) {
-    return { detected: false, leadScore: 'Low', relevanceType: 'Indirect travel agency' };
+  const hits = keywordHits(textBlob);
+
+  if (hits.high.length) {
+    return { detected: true, leadScore: 'High', relevanceType: 'J1-related', hits };
+  }
+  if (hits.medium.length) {
+    return { detected: true, leadScore: 'Medium', relevanceType: 'Hospitality training', hits };
+  }
+  if (hits.low.length) {
+    return { detected: true, leadScore: 'Low', relevanceType: 'Recruitment / placement', hits };
   }
 
-  const hitHigh = RELEVANCE_PATTERNS.high.some((rx) => rx.test(textBlob));
-  if (hitHigh) {
-    return { detected: true, leadScore: 'High', relevanceType: 'J1-related' };
-  }
-
-  const hitMedium = RELEVANCE_PATTERNS.medium.some((rx) => rx.test(textBlob));
-  if (hitMedium) {
-    return { detected: true, leadScore: 'Medium', relevanceType: 'Hospitality training' };
-  }
-
-  const hitLow = RELEVANCE_PATTERNS.low.some((rx) => rx.test(textBlob));
-  if (hitLow) {
-    return { detected: true, leadScore: 'Low', relevanceType: 'Recruitment / placement' };
-  }
-
-  return { detected: false, leadScore: 'Low', relevanceType: 'Indirect travel agency' };
+  return { detected: false, leadScore: 'Low', relevanceType: 'Indirect travel agency', hits };
 }
 
-export async function enrichLeadFromWebsite(place, userAgent) {
+function collectFixedPaths(website) {
+  return FIXED_PATHS.map((path) => makeAbsoluteUrl(path, website)).filter(Boolean);
+}
+
+export async function enrichLeadFromWebsite(place, userAgent, debugLog = () => {}) {
   const website = normalizeWebsiteUrl(place.website);
-  const contactPages = [];
+  const contactPages = new Set();
+  const formPages = new Set();
   const emails = new Set();
+  const phones = new Set();
   let facebookUrl = null;
   let instagramUrl = null;
+  let linkedinUrl = null;
+  let whatsappUrl = null;
   let combinedText = '';
+  const visited = [];
 
   if (!website) {
+    debugLog('lead.reject', { name: place.name, reason: 'no_site' });
     return {
       website: null,
       emails: [],
       facebookUrl: null,
       instagramUrl: null,
+      linkedinUrl: null,
+      whatsappUrl: null,
+      phoneNumbers: [],
       contactApplyPage: null,
-      relevance: { detected: false, leadScore: 'Low', relevanceType: 'Indirect travel agency' }
+      formPage: null,
+      visited,
+      relevance: { detected: false, leadScore: 'Low', relevanceType: 'Indirect travel agency', hits: { high: [], medium: [], low: [] } }
     };
   }
 
-  const home = await fetchText(website, userAgent);
-  if (home) {
-    combinedText += ` ${home}`;
+  const urlsToVisit = new Set([website, ...collectFixedPaths(website)]);
 
-    for (const email of extractEmails(home)) {
-      emails.add(email);
-    }
+  const crawlAndExtract = async (url) => {
+    visited.push(url);
+    debugLog('crawl.visit', { name: place.name, url });
 
-    const socials = extractSocialLinks(home);
-    facebookUrl = socials.facebook || facebookUrl;
-    instagramUrl = socials.instagram || instagramUrl;
+    const html = await fetchTextWithRetry(url, userAgent, debugLog);
+    if (!html) return;
 
-    const links = extractLinks(home, website);
-    links.mailto.forEach((mail) => emails.add(mail.toLowerCase()));
-    contactPages.push(...links.contactApplyPages);
-  }
-
-  for (const pageUrl of [...new Set(contactPages)].slice(0, 4)) {
-    const html = await fetchText(pageUrl, userAgent);
-    if (!html) continue;
     combinedText += ` ${html}`;
 
-    for (const email of extractEmails(html)) {
-      emails.add(email);
-    }
+    extractEmails(html).forEach((email) => emails.add(email));
+    extractPhones(html).forEach((phone) => phones.add(phone));
 
     const socials = extractSocialLinks(html);
     facebookUrl = facebookUrl || socials.facebook;
     instagramUrl = instagramUrl || socials.instagram;
+    linkedinUrl = linkedinUrl || socials.linkedin;
+    whatsappUrl = whatsappUrl || socials.whatsapp;
+
+    const links = extractLinks(html, url);
+    links.mailto.forEach((mail) => emails.add(mail.toLowerCase()));
+    links.contactApplyPages.forEach((page) => contactPages.add(page));
+    links.formPages.forEach((page) => formPages.add(page));
+  };
+
+  for (const url of urlsToVisit) {
+    await crawlAndExtract(url);
+  }
+
+  for (const url of [...contactPages].slice(0, 6)) {
+    if (!visited.includes(url)) {
+      await crawlAndExtract(url);
+    }
   }
 
   const relevance = scoreRelevance(combinedText);
-  if (!relevance.detected && /travel|recruit|placement|training/i.test(place.name || '')) {
-    relevance.detected = true;
-    relevance.relevanceType = 'Indirect travel agency';
-  }
+  debugLog('lead.intent', { name: place.name, hits: relevance.hits, score: relevance.leadScore, relevanceType: relevance.relevanceType });
+  debugLog('lead.contacts', {
+    name: place.name,
+    emails: [...emails],
+    facebookUrl,
+    instagramUrl,
+    linkedinUrl,
+    whatsappUrl,
+    phoneNumbers: [...phones],
+    contactApplyPages: [...contactPages],
+    formPages: [...formPages]
+  });
 
   return {
     website,
     emails: [...emails],
     facebookUrl,
     instagramUrl,
-    contactApplyPage: contactPages[0] || null,
+    linkedinUrl,
+    whatsappUrl,
+    phoneNumbers: [...phones],
+    contactApplyPage: [...contactPages][0] || null,
+    formPage: [...formPages][0] || null,
+    visited,
     relevance
   };
 }

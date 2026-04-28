@@ -1,6 +1,7 @@
 const form = document.querySelector('#search-form');
 const statusNode = document.querySelector('#status');
 const resultsNode = document.querySelector('#results');
+const debugNode = document.querySelector('#debug');
 
 function getFormPayload() {
   const formData = new FormData(form);
@@ -9,21 +10,35 @@ function getFormPayload() {
     city: formData.get('city'),
     state: formData.get('state'),
     country: formData.get('country'),
-    limit: Number(formData.get('limit'))
+    limit: Number(formData.get('limit')),
+    debug: formData.get('debug') === '1'
   };
 }
 
 function contactBadge(label, value) {
-  if (!value) return `<span class="muted">${label}: not found</span>`;
+  if (!value || (Array.isArray(value) && !value.length)) return `<span class="muted">${label}: not found</span>`;
+  if (Array.isArray(value)) return `<span>${label}: ${value.join(', ')}</span>`;
   if (value.includes('@')) return `<span>${label}: <a href="mailto:${value}">${value}</a></span>`;
   return `<span>${label}: <a href="${value}" target="_blank" rel="noopener">${value}</a></span>`;
 }
 
 function renderResults(data) {
-  statusNode.innerHTML = `<p><strong>Scanned:</strong> ${data.scannedBusinesses} | <strong>Qualified Leads:</strong> ${data.matchedBusinesses}</p>`;
+  statusNode.innerHTML = `
+    <p>
+      <strong>Discovered:</strong> ${data.scannedBusinesses} |
+      <strong>Crawled:</strong> ${data.crawledBusinesses} |
+      <strong>Qualified:</strong> ${data.matchedBusinesses} |
+      <strong>Rejected:</strong> ${data.rejectedBusinesses}
+    </p>
+    <p>
+      <strong>Providers:</strong> ${data.providerUsed.join(', ')} |
+      <strong>Retries:</strong> ${data.retriesUsed} |
+      <strong>Time:</strong> ${data.elapsedMs} ms
+    </p>
+  `;
 
   if (!data.results.length) {
-    resultsNode.innerHTML = '<p class="muted">No intent-matched leads with usable contact channels were found.</p>';
+    resultsNode.innerHTML = '<p class="muted">No qualified leads found. Enable debug and retry broader location input.</p>';
     return;
   }
 
@@ -40,7 +55,11 @@ function renderResults(data) {
           ${contactBadge('Email', item.email)}
           ${contactBadge('Facebook', item.facebookUrl)}
           ${contactBadge('Instagram', item.instagramUrl)}
+          ${contactBadge('LinkedIn', item.linkedinUrl)}
+          ${contactBadge('WhatsApp', item.whatsappUrl)}
+          ${contactBadge('Phone', item.phoneNumbers)}
           ${contactBadge('Contact/Apply', item.contactApplyPage)}
+          ${contactBadge('Form', item.formPage)}
         </div>
       </article>
     `
@@ -48,10 +67,28 @@ function renderResults(data) {
     .join('');
 }
 
+function renderDebug(data) {
+  if (!data.debug) {
+    debugNode.innerHTML = '';
+    return;
+  }
+
+  const rejected = data.debug.rejected || [];
+  const events = data.debug.events || [];
+
+  debugNode.innerHTML = `
+    <details>
+      <summary>Debug Trace (${events.length} events, ${rejected.length} rejected)</summary>
+      <pre>${JSON.stringify({ rejected, sampleEvents: events.slice(0, 80) }, null, 2)}</pre>
+    </details>
+  `;
+}
+
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   statusNode.textContent = 'Running lead intelligence search...';
   resultsNode.innerHTML = '';
+  debugNode.innerHTML = '';
 
   try {
     const payload = getFormPayload();
@@ -67,6 +104,7 @@ form.addEventListener('submit', async (event) => {
     }
 
     renderResults(data);
+    renderDebug(data);
   } catch (error) {
     statusNode.innerHTML = `<p class="muted">Error: ${error.message}</p>`;
   }

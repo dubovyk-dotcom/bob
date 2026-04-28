@@ -24,12 +24,14 @@
         <label>State / Province <input name="state" placeholder="Optional" /></label>
         <label>Country <input name="country" placeholder="Philippines" required /></label>
         <label>Result limit <input name="limit" type="number" min="1" max="200" value="25" /></label>
+        <label><input type="checkbox" name="debug" value="1" /> Include debug logs in API response</label>
 
         <button type="submit">Run Lead Search</button>
       </form>
 
       <section id="status"></section>
       <section id="results"></section>
+      <section id="debug"></section>
     </main>
 
     <script src="/app.js" type="module"></script>

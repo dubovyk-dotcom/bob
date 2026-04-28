@@ -60,10 +60,20 @@ button {
   gap: 0.4rem;
 }
 
-.muted {
-  color: #5a6475;
+details {
+  margin-top: 1rem;
 }
 
-ul {
-  margin: 0.2rem 0 0;
+pre {
+  max-height: 260px;
+  overflow: auto;
+  background: #0b1020;
+  color: #d6e4ff;
+  padding: 0.8rem;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.muted {
+  color: #5a6475;
 }
