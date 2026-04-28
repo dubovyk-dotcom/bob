@@ -2,26 +2,24 @@ const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
 const URL_REGEX = /https?:\/\/[^\s"'<>]+/gi;
 const PHONE_REGEX = /(?:\+?\d{1,3}[\s.-]?)?(?:\(?\d{2,4}\)?[\s.-]?)\d{3,4}[\s.-]?\d{3,4}/g;
 
-const USA_SIGNALS = ['usa', 'united states', 'america', 'work and travel usa', 'internship usa', 'j1', 'bridgeusa', 'ds-2019', 'u.s. hospitality', 'u.s. seasonal', 'placement in america'];
-const HIGH_SIGNALS = ['work and travel usa', 'j1', 'ds-2019', 'bridgeusa', 'usa internship placement', 'seasonal work usa recruiter'];
-const MEDIUM_SIGNALS = ['hospitality school usa internship', 'culinary school usa training', 'exchange visitor partner', 'usa training program'];
-const LOW_SIGNALS = ['student exchange', 'overseas recruitment usa', 'study and work usa'];
+const EXCLUSION_SIGNALS = ['backpacking', 'travel blog', 'volunteer', 'tour package', 'embassy', 'state department', 'visa news', 'immigration law', 'affiliate', 'top 10'];
 
-const EXCLUSION_SIGNALS = [
-  'backpacking',
-  'travel blog',
-  'volunteer',
-  'tour package',
-  'embassy',
-  'state department',
-  'visa news',
-  'immigration law',
-  'affiliate',
-  'top 10',
-  'best places to travel'
-];
+const RELEVANCE_SIGNALS = {
+  agencies: ['work and travel usa', 'j1', 'ds-2019', 'bridgeusa', 'exchange visitor'],
+  employers: ['hotel', 'resort', 'restaurant', 'hospitality group', 'seasonal employer', 'tourism operator'],
+  schools: ['hospitality school', 'culinary school', 'tourism college', 'university']
+};
+
+const COUNTRY_PHONE_HINTS = {
+  madagascar: ['+261'],
+  nepal: ['+977'],
+  ghana: ['+233']
+};
 
 const FIXED_PATHS = ['/contact', '/about', '/apply', '/careers', '/jobs', '/internships'];
+
+const unique = (arr) => [...new Set(arr)];
+const lower = (v = '') => v.toLowerCase();
 
 function normalizeWebsiteUrl(url) {
   if (!url) return null;
@@ -30,7 +28,6 @@ function normalizeWebsiteUrl(url) {
   }
 }
 
-const unique = (arr) => [...new Set(arr)];
 const extractEmails = (text) => unique((text.match(EMAIL_REGEX) || []).map((e) => e.toLowerCase())).filter((e) => !e.includes('example.com'));
 const extractPhones = (text) => unique((text.match(PHONE_REGEX) || []).map((p) => p.trim())).filter((p) => p.replace(/\D/g, '').length >= 8);
 
@@ -44,7 +41,9 @@ function extractSocialLinks(text) {
   };
 }
 
-function makeAbsoluteUrl(url, base) { try { return new URL(url, base).toString(); } catch { return null; } }
+const makeAbsoluteUrl = (url, base) => {
+  try { return new URL(url, base).toString(); } catch { return null; }
+};
 
 function extractLinks(html, baseUrl) {
   const hrefRegex = /href=["']([^"'#]+)["']/gi;
@@ -52,12 +51,12 @@ function extractLinks(html, baseUrl) {
   let match;
   while ((match = hrefRegex.exec(html)) !== null) {
     const href = match[1];
-    const lower = href.toLowerCase();
-    if (lower.startsWith('mailto:')) { mailto.push(href.replace(/^mailto:/i, '').trim()); continue; }
-    if (/(contact|about|apply|join|recruit|program|internship|career|job|form)/i.test(lower)) {
+    const l = lower(href);
+    if (l.startsWith('mailto:')) { mailto.push(href.replace(/^mailto:/i, '').trim()); continue; }
+    if (/(contact|about|apply|join|recruit|program|internship|career|job|form|facebook)/i.test(l)) {
       const abs = makeAbsoluteUrl(href, baseUrl); if (abs) contactApplyPages.push(abs);
     }
-    if (/(apply|contact|join|register|form)/i.test(lower)) {
+    if (/(apply|contact|join|register|form)/i.test(l)) {
       const abs = makeAbsoluteUrl(href, baseUrl); if (abs) formPages.push(abs);
     }
   }
@@ -67,18 +66,14 @@ function extractLinks(html, baseUrl) {
 async function fetchTextWithRetry(url, userAgent, debugLog, retries = 2) {
   for (let attempt = 1; attempt <= retries + 1; attempt += 1) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 12000);
+    const timer = setTimeout(() => controller.abort(), 11000);
     try {
-      const response = await fetch(url, {
-        redirect: 'follow',
-        headers: { 'User-Agent': userAgent, Accept: 'text/html,application/xhtml+xml' },
-        signal: controller.signal
-      });
-      if (!response.ok) { debugLog('crawl.http_error', { url, status: response.status, attempt }); continue; }
-      const type = response.headers.get('content-type') || '';
+      const res = await fetch(url, { redirect: 'follow', headers: { 'User-Agent': userAgent, Accept: 'text/html,application/xhtml+xml' }, signal: controller.signal });
+      if (!res.ok) { debugLog('crawl.http_error', { url, status: res.status, attempt }); continue; }
+      const type = res.headers.get('content-type') || '';
       if (!type.includes('text/html') && !type.includes('text/plain')) return null;
-      const text = await response.text();
-      debugLog('crawl.success', { url, attempt, bytes: text.length });
+      const text = await res.text();
+      debugLog('crawl.success', { url, bytes: text.length, attempt });
       return text;
     } catch (error) {
       debugLog('crawl.error', { url, attempt, error: error.message });
@@ -88,69 +83,97 @@ async function fetchTextWithRetry(url, userAgent, debugLog, retries = 2) {
   return null;
 }
 
-function hasAny(text, words) {
-  const lower = (text || '').toLowerCase();
-  return words.filter((w) => lower.includes(w.toLowerCase()));
+function hasAny(text, terms) {
+  const l = lower(text);
+  return terms.filter((t) => l.includes(lower(t)));
 }
 
-function scoreRelevance(textBlob) {
-  const exclusionHits = hasAny(textBlob, EXCLUSION_SIGNALS);
-  if (exclusionHits.length) return { detected: false, rejected: true, rejectionReason: 'excluded_content', leadScore: 'Reject', relevanceType: 'Irrelevant', hits: { exclusionHits } };
+function inferLocality({ textBlob, website, phones, country }) {
+  const l = lower(textBlob);
+  const c = lower(country);
+  const phoneHints = COUNTRY_PHONE_HINTS[c] || [];
+  const phoneMatch = phones.some((p) => phoneHints.some((hint) => p.includes(hint)));
+  const textMatch = l.includes(c);
+  const domainMatch = website ? lower(website).includes(`.${c.slice(0, 2)}`) || lower(website).includes(c) : false;
+  const localScore = [textMatch, domainMatch, phoneMatch].filter(Boolean).length;
 
-  const usaHits = hasAny(textBlob, USA_SIGNALS);
-  if (!usaHits.length) return { detected: false, rejected: true, rejectionReason: 'no_usa_signal', leadScore: 'Reject', relevanceType: 'No USA pipeline', hits: { usaHits } };
+  const usHints = hasAny(l, ['usa', 'united states', 'u.s.', 'america']);
+  const isUSBased = usHints.length > 0 && !textMatch;
+  const foreignWithLocal = usHints.length > 0 && textMatch;
 
-  const highHits = hasAny(textBlob, HIGH_SIGNALS);
-  const mediumHits = hasAny(textBlob, MEDIUM_SIGNALS);
-  const lowHits = hasAny(textBlob, LOW_SIGNALS);
-
-  if (highHits.length) return { detected: true, rejected: false, leadScore: 'High', relevanceType: 'Direct USA recruitment / placement', hits: { usaHits, highHits, mediumHits, lowHits } };
-  if (mediumHits.length) return { detected: true, rejected: false, leadScore: 'Medium', relevanceType: 'School/agency with USA pathway', hits: { usaHits, highHits, mediumHits, lowHits } };
-  if (lowHits.length || usaHits.length) return { detected: true, rejected: false, leadScore: 'Low', relevanceType: 'Indirect USA partner', hits: { usaHits, highHits, mediumHits, lowHits } };
-
-  return { detected: false, rejected: true, rejectionReason: 'insufficient_intent', leadScore: 'Reject', relevanceType: 'Irrelevant', hits: { usaHits, highHits, mediumHits, lowHits } };
+  return { localScore, isLocal: localScore > 0, isUSBased, foreignWithLocal, usHints, localitySignals: { textMatch, domainMatch, phoneMatch } };
 }
 
-const collectFixedPaths = (website) => FIXED_PATHS.map((path) => makeAbsoluteUrl(path, website)).filter(Boolean);
+function classifyLead(textBlob) {
+  const exclusions = hasAny(textBlob, EXCLUSION_SIGNALS);
+  if (exclusions.length) return { detected: false, rejected: true, rejectionReason: 'excluded_content', leadScore: 'Reject', relevanceType: 'Indirect Lead', tags: ['Indirect Lead'] };
 
-export async function enrichLeadFromWebsite(place, userAgent, debugLog = () => {}) {
+  const agencyHits = hasAny(textBlob, RELEVANCE_SIGNALS.agencies);
+  const employerHits = hasAny(textBlob, RELEVANCE_SIGNALS.employers);
+  const schoolHits = hasAny(textBlob, RELEVANCE_SIGNALS.schools);
+
+  let leadScore = 'Low';
+  let relevanceType = 'Indirect Lead';
+  const tags = [];
+
+  if (agencyHits.length) {
+    leadScore = 'High';
+    relevanceType = 'J1 Recruiter';
+    tags.push('Local Agency', 'J1 Recruiter');
+  } else if (employerHits.length) {
+    leadScore = 'Medium';
+    relevanceType = employerHits.some((h) => h.includes('restaurant')) ? 'Restaurant Employer' : 'Hotel Employer';
+    tags.push(relevanceType);
+  } else if (schoolHits.length) {
+    leadScore = 'Medium';
+    relevanceType = schoolHits.some((h) => h.includes('tourism')) ? 'Tourism College' : 'Hospitality School';
+    tags.push(relevanceType);
+  }
+
+  return { detected: agencyHits.length + employerHits.length + schoolHits.length > 0, rejected: false, leadScore, relevanceType, tags };
+}
+
+export async function enrichLeadFromWebsite(place, userAgent, debugLog = () => {}, country = '') {
   const website = normalizeWebsiteUrl(place.website);
   const contactPages = new Set(); const formPages = new Set();
   const emails = new Set(); const phones = new Set();
   let facebookUrl = null; let instagramUrl = null; let linkedinUrl = null; let whatsappUrl = null;
-  let combinedText = ''; const visited = [];
+  let combinedText = `${place.address || ''} ${place.name || ''}`;
+  const visited = [];
 
   if (!website) {
-    debugLog('lead.reject', { name: place.name, reason: 'no_site' });
-    return { website: null, emails: [], facebookUrl: null, instagramUrl: null, linkedinUrl: null, whatsappUrl: null, phoneNumbers: [], contactApplyPage: null, formPage: null, visited, relevance: { detected: false, rejected: true, rejectionReason: 'no_site', leadScore: 'Reject', relevanceType: 'Irrelevant', hits: {} } };
+    return { website: null, emails: [], facebookUrl: null, instagramUrl: null, linkedinUrl: null, whatsappUrl: null, phoneNumbers: [], contactApplyPage: null, formPage: null, visited, relevance: { detected: false, rejected: true, rejectionReason: 'no_site', leadScore: 'Reject', relevanceType: 'Indirect Lead', tags: ['Indirect Lead'] }, locality: { localScore: 0, isLocal: false, isUSBased: false, foreignWithLocal: false, usHints: [], localitySignals: {} } };
   }
 
-  const urlsToVisit = new Set([website, ...collectFixedPaths(website)]);
+  const urlsToVisit = new Set([website, ...FIXED_PATHS.map((p) => makeAbsoluteUrl(p, website)).filter(Boolean)]);
 
   const crawlAndExtract = async (url) => {
     visited.push(url);
-    debugLog('crawl.visit', { name: place.name, url });
     const html = await fetchTextWithRetry(url, userAgent, debugLog);
     if (!html) return;
     combinedText += ` ${html}`;
-    extractEmails(html).forEach((email) => emails.add(email));
-    extractPhones(html).forEach((phone) => phones.add(phone));
-    const socials = extractSocialLinks(html);
-    facebookUrl = facebookUrl || socials.facebook;
-    instagramUrl = instagramUrl || socials.instagram;
-    linkedinUrl = linkedinUrl || socials.linkedin;
-    whatsappUrl = whatsappUrl || socials.whatsapp;
+    extractEmails(html).forEach((x) => emails.add(x));
+    extractPhones(html).forEach((x) => phones.add(x));
+    const social = extractSocialLinks(html);
+    facebookUrl = facebookUrl || social.facebook;
+    instagramUrl = instagramUrl || social.instagram;
+    linkedinUrl = linkedinUrl || social.linkedin;
+    whatsappUrl = whatsappUrl || social.whatsapp;
     const links = extractLinks(html, url);
-    links.mailto.forEach((mail) => emails.add(mail.toLowerCase()));
-    links.contactApplyPages.forEach((page) => contactPages.add(page));
-    links.formPages.forEach((page) => formPages.add(page));
+    links.mailto.forEach((x) => emails.add(x.toLowerCase()));
+    links.contactApplyPages.forEach((x) => contactPages.add(x));
+    links.formPages.forEach((x) => formPages.add(x));
   };
 
   for (const url of urlsToVisit) await crawlAndExtract(url);
   for (const url of [...contactPages].slice(0, 6)) if (!visited.includes(url)) await crawlAndExtract(url);
 
-  const relevance = scoreRelevance(combinedText);
-  debugLog('lead.intent', { name: place.name, score: relevance.leadScore, relevanceType: relevance.relevanceType, hits: relevance.hits, rejectionReason: relevance.rejectionReason || null });
+  const relevance = classifyLead(combinedText);
+  const locality = inferLocality({ textBlob: combinedText, website, phones: [...phones], country });
+  if (locality.isUSBased) relevance.tags = [...new Set([...(relevance.tags || []), 'U.S.-Based Organization'])];
+  if (locality.foreignWithLocal) relevance.tags = [...new Set([...(relevance.tags || []), 'Local Agency'])];
+
+  debugLog('lead.intent', { name: place.name, relevance, locality });
 
   return {
     website,
@@ -163,6 +186,7 @@ export async function enrichLeadFromWebsite(place, userAgent, debugLog = () => {
     contactApplyPage: [...contactPages][0] || null,
     formPage: [...formPages][0] || null,
     visited,
-    relevance
+    relevance,
+    locality
   };
 }

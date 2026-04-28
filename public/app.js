@@ -1,24 +1,32 @@
 const form = document.querySelector('#search-form');
 const statusNode = document.querySelector('#status');
+const filtersNode = document.querySelector('#result-filters');
 const actionsNode = document.querySelector('#actions');
 const tableWrap = document.querySelector('#table-wrap');
-const debugNode = document.querySelector('#debug');
 
 let lastData = null;
 let sortKey = 'leadScore';
 let sortDir = 'desc';
+let activeFilters = {
+  agencies: true,
+  hotels: true,
+  restaurants: true,
+  schools: true,
+  usaOrganizations: true,
+  facebookOnly: false,
+  websiteOnly: false
+};
 
 function getFormPayload() {
-  const formData = new FormData(form);
+  const fd = new FormData(form);
   return {
-    categories: formData.getAll('categories'),
-    mode: formData.get('mode'),
-    country: formData.get('country'),
-    city: formData.get('city'),
-    state: formData.get('state'),
-    limit: Number(formData.get('limit')),
-    export: 'csv',
-    debug: false
+    categories: fd.getAll('categories'),
+    mode: fd.get('mode'),
+    country: fd.get('country'),
+    city: fd.get('city'),
+    state: fd.get('state'),
+    limit: Number(fd.get('limit')),
+    export: 'csv'
   };
 }
 
@@ -34,99 +42,105 @@ function downloadContent(content, filename, type) {
 
 async function exportFormat(format) {
   if (!lastData) return;
-  const payload = { ...lastData.requested, categories: form.querySelectorAll('input[name="categories"]:checked') ? getFormPayload().categories : [], export: format };
-  const response = await fetch('/api/search', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  const data = await response.json();
+  const payload = { ...getFormPayload(), export: format };
+  const res = await fetch('/api/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  const data = await res.json();
   const type = format === 'xlsx' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'text/csv;charset=utf-8';
   downloadContent(data.export.content, data.export.filename, type);
 }
 
 function copyField(field) {
   if (!lastData?.results?.length) return;
-  const lines = [...new Set(lastData.results.map((r) => r[field]).filter(Boolean))];
-  navigator.clipboard.writeText(lines.join('\n'));
+  navigator.clipboard.writeText([...new Set(lastData.results.map((r) => r[field]).filter(Boolean))].join('\n'));
 }
 
-function scoreOrder(score) {
-  if (score === 'High') return 3;
-  if (score === 'Medium') return 2;
-  if (score === 'Low') return 1;
-  return 0;
+function scoreOrder(score) { return score === 'High' ? 3 : score === 'Medium' ? 2 : score === 'Low' ? 1 : 0; }
+
+function passesFilter(lead) {
+  const r = (lead.relevanceType || '').toLowerCase();
+  if (!activeFilters.agencies && (r.includes('j1') || r.includes('agency') || r.includes('recruiter'))) return false;
+  if (!activeFilters.hotels && r.includes('hotel')) return false;
+  if (!activeFilters.restaurants && r.includes('restaurant')) return false;
+  if (!activeFilters.schools && (r.includes('school') || r.includes('college'))) return false;
+  if (!activeFilters.usaOrganizations && (lead.tags || []).includes('U.S.-Based Organization')) return false;
+  if (activeFilters.facebookOnly && !lead.facebookUrl) return false;
+  if (activeFilters.websiteOnly && !lead.website) return false;
+  return true;
 }
 
 function sortedResults(results) {
-  const arr = [...results];
-  arr.sort((a, b) => {
-    let av = a[sortKey] || '';
-    let bv = b[sortKey] || '';
-    if (sortKey === 'leadScore') {
-      av = scoreOrder(av);
-      bv = scoreOrder(bv);
-    }
-    if (av < bv) return sortDir === 'asc' ? -1 : 1;
-    if (av > bv) return sortDir === 'asc' ? 1 : -1;
-    return 0;
+  return [...results]
+    .filter(passesFilter)
+    .sort((a, b) => {
+      let av = a[sortKey] || '';
+      let bv = b[sortKey] || '';
+      if (sortKey === 'leadScore') {
+        av = scoreOrder(av);
+        bv = scoreOrder(bv);
+      }
+      if (av < bv) return sortDir === 'asc' ? -1 : 1;
+      if (av > bv) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+}
+
+function renderFilters() {
+  filtersNode.innerHTML = `
+    <div class="actions">
+      <label><input type="checkbox" data-f="agencies" ${activeFilters.agencies ? 'checked' : ''}/> Agencies</label>
+      <label><input type="checkbox" data-f="hotels" ${activeFilters.hotels ? 'checked' : ''}/> Hotels</label>
+      <label><input type="checkbox" data-f="restaurants" ${activeFilters.restaurants ? 'checked' : ''}/> Restaurants</label>
+      <label><input type="checkbox" data-f="schools" ${activeFilters.schools ? 'checked' : ''}/> Schools</label>
+      <label><input type="checkbox" data-f="usaOrganizations" ${activeFilters.usaOrganizations ? 'checked' : ''}/> USA Organizations</label>
+      <label><input type="checkbox" data-f="facebookOnly" ${activeFilters.facebookOnly ? 'checked' : ''}/> Facebook-only leads</label>
+      <label><input type="checkbox" data-f="websiteOnly" ${activeFilters.websiteOnly ? 'checked' : ''}/> Website-only leads</label>
+    </div>
+  `;
+
+  filtersNode.querySelectorAll('input[data-f]').forEach((el) => {
+    el.addEventListener('change', () => {
+      activeFilters[el.dataset.f] = el.checked;
+      if (lastData) renderTable(lastData.results || []);
+    });
   });
-  return arr;
 }
 
 function renderTable(results) {
   const rows = sortedResults(results)
     .map(
-      (r) => `
-      <tr>
+      (r) => `<tr>
         <td>${r.email ? `<a href="mailto:${r.email}">${r.email}</a>` : ''}</td>
-        <td>${r.website ? `<a href="${r.website}" target="_blank" rel="noopener">${r.website}</a>` : ''}</td>
-        <td>${r.facebookUrl ? `<a href="${r.facebookUrl}" target="_blank" rel="noopener">${r.facebookUrl}</a>` : ''}</td>
+        <td>${r.website ? `<a target="_blank" rel="noopener" href="${r.website}">${r.website}</a>` : ''}</td>
+        <td>${r.facebookUrl ? `<a target="_blank" rel="noopener" href="${r.facebookUrl}">${r.facebookUrl}</a>` : ''}</td>
         <td>${r.businessName || ''}</td>
         <td>${r.leadScore || ''}</td>
-      </tr>
-    `
+      </tr>`
     )
     .join('');
 
-  tableWrap.innerHTML = `
-    <table>
-      <thead>
-        <tr>
-          <th data-key="email">Email</th>
-          <th data-key="website">Website</th>
-          <th data-key="facebookUrl">Facebook</th>
-          <th data-key="businessName">Name</th>
-          <th data-key="leadScore">Score</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>
-  `;
+  tableWrap.innerHTML = `<table><thead><tr><th data-key="email">Email</th><th data-key="website">Website</th><th data-key="facebookUrl">Facebook</th><th data-key="businessName">Name</th><th data-key="leadScore">Score</th></tr></thead><tbody>${rows}</tbody></table>`;
 
   tableWrap.querySelectorAll('th[data-key]').forEach((th) => {
     th.addEventListener('click', () => {
-      const key = th.dataset.key;
-      if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      const k = th.dataset.key;
+      if (sortKey === k) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
       else {
-        sortKey = key;
+        sortKey = k;
         sortDir = 'asc';
       }
-      renderTable(lastData.results);
+      renderTable(lastData.results || []);
     });
   });
 }
 
 function renderActions() {
-  actionsNode.innerHTML = `
-    <div class="actions">
-      <button type="button" id="export-csv">Export CSV</button>
-      <button type="button" id="export-xlsx">Export Excel</button>
-      <button type="button" id="copy-emails">Copy Emails Only</button>
-      <button type="button" id="copy-websites">Copy Websites Only</button>
-      <button type="button" id="copy-facebook">Copy Facebook Only</button>
-    </div>
-  `;
+  actionsNode.innerHTML = `<div class="actions">
+    <button type="button" id="export-csv">Export CSV</button>
+    <button type="button" id="export-xlsx">Export Excel</button>
+    <button type="button" id="copy-emails">Copy Emails Only</button>
+    <button type="button" id="copy-websites">Copy Websites Only</button>
+    <button type="button" id="copy-facebook">Copy Facebook Only</button>
+  </div>`;
 
   document.querySelector('#export-csv')?.addEventListener('click', () => exportFormat('csv'));
   document.querySelector('#export-xlsx')?.addEventListener('click', () => exportFormat('xlsx'));
@@ -136,32 +150,24 @@ function renderActions() {
 }
 
 function renderStatus(data) {
-  statusNode.innerHTML = `
-    <p><strong>Mode:</strong> ${data.mode} | <strong>Scanned:</strong> ${data.scannedBusinesses} | <strong>Crawled:</strong> ${data.crawledBusinesses} | <strong>Qualified:</strong> ${data.matchedBusinesses} | <strong>Rejected:</strong> ${data.rejectedBusinesses}</p>
-    <p><strong>Providers:</strong> ${data.providerUsed.join(', ')} | <strong>Time:</strong> ${data.elapsedMs} ms</p>
-  `;
+  statusNode.innerHTML = `<p><strong>Mode:</strong> ${data.mode} | <strong>Scanned:</strong> ${data.scannedBusinesses} | <strong>Crawled:</strong> ${data.crawledBusinesses} | <strong>Qualified:</strong> ${data.matchedBusinesses} | <strong>Rejected:</strong> ${data.rejectedBusinesses}</p>`;
 }
 
-form.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  statusNode.textContent = 'Searching for USA-focused partner leads...';
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  statusNode.textContent = 'Searching local-first leads...';
+  filtersNode.innerHTML = '';
   actionsNode.innerHTML = '';
   tableWrap.innerHTML = '';
-  debugNode.innerHTML = '';
+  const payload = getFormPayload();
 
   try {
-    const payload = getFormPayload();
-    const response = await fetch('/api/search', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Search failed');
-
+    const res = await fetch('/api/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Search failed');
     lastData = data;
     renderStatus(data);
+    renderFilters();
     renderActions();
     renderTable(data.results || []);
   } catch (error) {

@@ -1,67 +1,39 @@
-# USA Partner Lead Engine
+# USA Partner Lead Engine (Local-Country First)
 
-This build is optimized for **U.S.-focused partner lead generation**.
+## What this update fixes
 
-## Target Leads (only)
+- Restores employer categories: Hotels, Resorts, Restaurants, Hospitality Groups, Seasonal Employers, Tourism Operators.
+- Prioritizes country-local results (example: Madagascar should show Madagascar organizations first).
+- Expands local-market discovery with French/local query variants.
+- Keeps broad contact acceptance (website/Facebook/Instagram/LinkedIn/WhatsApp/phone/contact form).
+- Adds UI filters for Agencies/Hotels/Restaurants/Schools/USA Organizations/Facebook-only/Website-only.
 
-- J1 agencies
-- Work and Travel USA recruiters
-- USA internship placement agencies
-- DS-2019 / BridgeUSA ecosystem partners
-- hospitality/culinary/tourism schools with USA pathways
-- seasonal USA worker recruiters
+## Search category modes
 
-## Strict Exclusions
+You can combine categories to create practical modes:
 
-Automatically rejected:
+- Agencies only
+- Employers only
+- Agencies + Employers
+- Schools only
+- All categories
 
-- backpacking/travel blogs
-- volunteer programs
-- generic tours agencies
-- embassy/state department pages
-- visa news blogs / immigration law blogs
-- local internships without USA pipeline
-- affiliate/listicle content
+## Ranking behavior
 
-## USA Intent Requirement
+For a country search (e.g., Madagascar), ranking is local-first:
 
-Leads are strongly filtered by USA signals like:
+1. Local agencies
+2. Local hotels/restaurants/employers
+3. Local schools
+4. Regional/foreign with local signal
+5. U.S.-based fallback organizations
 
-`USA`, `United States`, `America`, `Work and Travel USA`, `Internship USA`, `J1`, `BridgeUSA`, `DS-2019`.
-
-## Search Modes
-
-- **Fast Mode**: prioritize top results and return quickly.
-- **Full Harvest Mode**: crawl all discovered candidates, no early stop.
-
-## Exports
-
-One-click exports in UI:
-
-- CSV
-- Excel (`.xlsx` spreadsheet XML output)
-
-Export columns:
-
-1. Email
-2. Website
-3. Facebook
-4. Business Name
-5. Country
-6. Contact Page
-7. Instagram
-8. Lead Score
-9. Relevance Type
-10. Notes
-
-## UI Utilities
+## Exports and table
 
 - Export CSV
 - Export Excel
-- Copy Emails Only
-- Copy Websites Only
-- Copy Facebook Only
-- Sortable compact table view (`Email | Website | Facebook | Name | Score`)
+- Copy Emails / Websites / Facebook
+- Sortable compact table: `Email | Website | Facebook | Name | Score`
 
 ## Run
 
@@ -70,5 +42,3 @@ cp .env.example .env
 npm install
 npm start
 ```
-
-Open: http://127.0.0.1:3005

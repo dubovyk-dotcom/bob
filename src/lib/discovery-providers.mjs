@@ -1,41 +1,51 @@
-const CATEGORY_QUERIES = {
-  hotels: ['hospitality school USA internship', 'tourism college USA training'],
-  restaurants: ['culinary school USA training', 'culinary internship USA placement'],
-  schools: ['hospitality school USA placement', 'university USA internship partner'],
-  j1Agencies: ['Work and Travel USA agency', 'J1 USA recruiter', 'DS-2019 sponsor partner']
+export const CATEGORY_LABELS = {
+  agencies: 'Agencies',
+  hotels: 'Hotels',
+  resorts: 'Resorts',
+  restaurants: 'Restaurants',
+  hospitalityGroups: 'Hospitality Groups',
+  seasonalEmployers: 'Seasonal Employers',
+  tourismOperators: 'Tourism Operators',
+  schools: 'Schools',
+  usaOrganizations: 'USA Organizations'
 };
 
-const COUNTRY_USA_PIPELINE_QUERIES = ({ country }) => [
+const CATEGORY_QUERIES = {
+  agencies: ['Work and Travel USA agency', 'J1 visa agency', 'exchange program agency', 'student placement USA'],
+  hotels: ['hotel recruitment USA', 'hotel employer hospitality trainees'],
+  resorts: ['resort employer hospitality trainees', 'seasonal resort jobs USA'],
+  restaurants: ['restaurant employer hospitality trainees', 'culinary placement USA'],
+  hospitalityGroups: ['hospitality group recruitment USA', 'hospitality management trainees USA'],
+  seasonalEmployers: ['seasonal employer USA recruitment', 'saisonnier USA recrutement'],
+  tourismOperators: ['tourism operator recruitment USA', 'agence voyage travail USA'],
+  schools: ['hospitality school USA internship', 'tourism college USA training'],
+  usaOrganizations: ['U.S. exchange visitor organization', 'DS-2019 sponsor partner']
+};
+
+const COUNTRY_LOCAL_EXPANSIONS = ({ country }) => [
   `${country} Work and Travel USA agency`,
-  `${country} J1 USA recruiter`,
-  `${country} hospitality school USA internship`,
-  `${country} USA seasonal job agency`,
-  `${country} culinary school USA training`,
-  `${country} USA internship placement agency`,
-  `${country} DS-2019 partner`
+  `${country} J1 visa agency`,
+  `${country} hospitality recruitment USA`,
+  `${country} student placement USA`,
+  `${country} exchange program agency`,
+  `${country} recrutement USA`,
+  `${country} agence voyage travail USA`,
+  `${country} recrutement saisonnier USA`
 ];
 
 const FALLBACK_EXPANSION = ({ country }) => [
-  `${country} exchange visitor USA agency`,
-  `${country} bridgeusa partner`,
-  `${country} U.S. hospitality training recruiter`
+  `${country} facebook work and travel agency`,
+  `${country} facebook recrutement usa`,
+  `${country} local hospitality employer`
 ];
-
-export const CATEGORY_LABELS = {
-  hotels: 'Hotels',
-  restaurants: 'Restaurants',
-  schools: 'Hospitality Schools',
-  j1Agencies: 'J1 Visa Agencies'
-};
 
 function buildIntentQueries({ categories, city, state, country, isFallback = false }) {
   const location = [city, state].filter(Boolean).join(', ');
-  const localized = COUNTRY_USA_PIPELINE_QUERIES({ country });
+  const base = COUNTRY_LOCAL_EXPANSIONS({ country });
   const categorySeeds = categories.flatMap((category) => (CATEGORY_QUERIES[category] || []).map((seed) => `${country} ${seed}`));
-
-  const queries = [...localized, ...categorySeeds].map((q) => (location ? `${q}, ${location}` : q));
-  if (isFallback) queries.push(...FALLBACK_EXPANSION({ country }));
-  return [...new Set(queries)];
+  const all = [...base, ...categorySeeds];
+  if (isFallback) all.push(...FALLBACK_EXPANSION({ country }));
+  return [...new Set(all)].map((q) => (location ? `${q}, ${location}` : q));
 }
 
 function normalizePlace(place, query, source) {
@@ -77,35 +87,52 @@ const stripTags = (value = '') => value.replace(/<[^>]+>/g, ' ').replace(/\s+/g,
 async function discoverFromDuckDuckGo(query, userAgent, limit) {
   const url = new URL('https://duckduckgo.com/html/');
   url.searchParams.set('q', query);
-
   const response = await fetchWithTimeout(url, { headers: { 'User-Agent': userAgent, Accept: 'text/html,application/xhtml+xml' } });
   if (!response.ok) return [];
-
   const html = await response.text();
+
   const parsed = [];
-  const resultRegex = /<a[^>]+href="([^"]*uddg=[^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+  const regex = /<a[^>]+href="([^"]*uddg=[^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
   let match;
-  while ((match = resultRegex.exec(html)) !== null && parsed.length < limit) {
+  while ((match = regex.exec(html)) !== null && parsed.length < limit) {
     const decoded = decodeURIComponent((match[1].split('uddg=')[1] || '').split('&')[0] || '');
     if (!decoded.startsWith('http')) continue;
     const title = stripTags(match[2]);
     parsed.push(normalizePlace({ title, snippet: title, url: decoded, address: title }, query, 'DuckDuckGo'));
   }
+
+  const fbQuery = `${query} site:facebook.com`;
+  if (parsed.length < Math.ceil(limit / 2)) {
+    const fbUrl = new URL('https://duckduckgo.com/html/');
+    fbUrl.searchParams.set('q', fbQuery);
+    const fbRes = await fetchWithTimeout(fbUrl, { headers: { 'User-Agent': userAgent, Accept: 'text/html,application/xhtml+xml' } });
+    if (fbRes.ok) {
+      const fbHtml = await fbRes.text();
+      regex.lastIndex = 0;
+      while ((match = regex.exec(fbHtml)) !== null && parsed.length < limit) {
+        const decoded = decodeURIComponent((match[1].split('uddg=')[1] || '').split('&')[0] || '');
+        if (!decoded.startsWith('http')) continue;
+        const title = stripTags(match[2]);
+        parsed.push(normalizePlace({ title, snippet: title, url: decoded, address: title }, `${query} (facebook)`, 'DuckDuckGo'));
+      }
+    }
+  }
+
   return parsed;
 }
 
 export async function discoverBusinesses({ categories, city, state, country, limit, mode, userAgent, debugLog = () => {} }) {
   const runDiscovery = async (isFallback) => {
     const queries = buildIntentQueries({ categories, city, state, country, isFallback });
-    const perQueryLimit = mode === 'full' ? 10 : Math.max(3, Math.ceil((limit * 2) / Math.max(1, queries.length)));
+    const perQueryLimit = mode === 'full' ? 12 : Math.max(4, Math.ceil((limit * 2) / Math.max(1, queries.length)));
     const all = [];
 
     for (const query of queries) {
       debugLog('query.start', { query, providers: ['Nominatim', 'DuckDuckGo'] });
       try {
         const [nomi, ddg] = await Promise.all([discoverFromNominatim(query, userAgent, perQueryLimit), discoverFromDuckDuckGo(query, userAgent, perQueryLimit)]);
-        debugLog('query.results', { query, nominatim: nomi.length, duckduckgo: ddg.length, total: nomi.length + ddg.length });
         all.push(...nomi, ...ddg);
+        debugLog('query.results', { query, nominatim: nomi.length, duckduckgo: ddg.length, total: nomi.length + ddg.length });
       } catch (error) {
         debugLog('query.error', { query, error: error.message });
       }
@@ -128,5 +155,5 @@ export async function discoverBusinesses({ categories, city, state, country, lim
     leads = await runDiscovery(true);
   }
 
-  return mode === 'full' ? leads : leads.slice(0, Math.max(limit * 4, 40));
+  return mode === 'full' ? leads : leads.slice(0, Math.max(limit * 5, 50));
 }
