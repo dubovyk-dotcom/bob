@@ -159,6 +159,7 @@ export async function runBusinessContactSearch(input, userAgent) {
       phoneNumbers: enriched.phoneNumbers,
       leadScore: enriched.relevance.detected ? enriched.relevance.leadScore : 'Low',
       relevanceType: enriched.relevance.detected ? enriched.relevance.relevanceType : 'Indirect Lead',
+      outputBucket: enriched.relevance.outputBucket || 'Indirect recruiters',
       destination: enriched.destination || 'General abroad',
       tags: enriched.relevance.tags || ['Indirect Lead'],
       locality: enriched.locality,
@@ -189,6 +190,7 @@ export async function runBusinessContactSearch(input, userAgent) {
         phoneNumbers: [],
         leadScore: "Low",
         relevanceType: "Indirect Lead",
+        outputBucket: "Indirect recruiters",
         destination: "General abroad",
         tags: ["Indirect Lead"],
         locality: { isLocal: true },
@@ -196,6 +198,12 @@ export async function runBusinessContactSearch(input, userAgent) {
       }));
     if (partial.length) results = partial;
   }
+
+  const bucketCounts = results.reduce((acc, lead) => {
+    const key = lead.outputBucket || 'Indirect recruiters';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
 
   const response = {
     requested: { ...input, categories: input.categories.map((c) => CATEGORY_LABELS[c]) },
@@ -208,6 +216,7 @@ export async function runBusinessContactSearch(input, userAgent) {
     rejectedBusinesses: rejected.length,
     retriesUsed: debugEvents.filter((e) => e.event === 'fallback.trigger').length,
     elapsedMs: Date.now() - startedAt,
+    bucketCounts,
     progress: {
       sourcesScanned: debugEvents.filter((e) => e.event === 'query.start').length,
       domainsFound: crawlQueue.length,

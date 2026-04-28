@@ -4,18 +4,35 @@ const PHONE_REGEX = /(?:\+?\d{1,3}[\s.-]?)?(?:\(?\d{2,4}\)?[\s.-]?)\d{3,4}[\s.-]
 
 const EXCLUSION_SIGNALS = ['backpacking', 'travel blog', 'volunteer', 'tour package', 'embassy', 'state department', 'visa news', 'immigration law', 'affiliate', 'top 10'];
 
-const RELEVANCE_SIGNALS = {
-  agencies: ['work and travel usa', 'j1', 'ds-2019', 'bridgeusa', 'exchange visitor'],
-  employers: ['hotel', 'resort', 'restaurant', 'hospitality group', 'seasonal employer', 'tourism operator'],
-  schools: ['hospitality school', 'culinary school', 'tourism college', 'university']
-};
+const J1_CORE_SIGNALS = [
+  'j1 visa',
+  'bridgeusa',
+  'exchange visitor program',
+  'ds-2019',
+  'ds 2019',
+  'ds-7002',
+  'cultural exchange programs usa',
+  'hospitality trainee usa',
+  'intern usa program',
+  'summer work travel usa'
+];
 
-const COUNTRY_PHONE_HINTS = {
-  madagascar: ['+261'],
-  nepal: ['+977'],
-  ghana: ['+233']
-};
+const J1_HIDDEN_SIGNALS = [
+  'trainee program usa',
+  'hotel internship usa',
+  'exchange program usa',
+  'work & study usa',
+  'work and study usa',
+  'international hospitality training usa',
+  'usa placement',
+  'hospitality placement usa',
+  'internship usa'
+];
 
+const GENERAL_AGENCY_SIGNALS = ['overseas recruitment', 'work abroad agency', 'manpower agency', 'deployment agency', 'international placement'];
+const HOSPITALITY_SCHOOL_SIGNALS = ['hospitality school', 'culinary school', 'tourism college', 'hotel school', 'academy of hospitality'];
+
+const COUNTRY_PHONE_HINTS = { madagascar: ['+261'], nepal: ['+977'], ghana: ['+233'], philippines: ['+63'] };
 const FIXED_PATHS = ['/contact', '/about', '/apply', '/careers', '/jobs', '/internships'];
 
 const unique = (arr) => [...new Set(arr)];
@@ -41,9 +58,7 @@ function extractSocialLinks(text) {
   };
 }
 
-const makeAbsoluteUrl = (url, base) => {
-  try { return new URL(url, base).toString(); } catch { return null; }
-};
+const makeAbsoluteUrl = (url, base) => { try { return new URL(url, base).toString(); } catch { return null; } };
 
 function extractLinks(html, baseUrl) {
   const hrefRegex = /href=["']([^"'#]+)["']/gi;
@@ -106,42 +121,73 @@ function inferLocality({ textBlob, website, phones, country }) {
 
 function classifyLead(textBlob) {
   const exclusions = hasAny(textBlob, EXCLUSION_SIGNALS);
-  if (exclusions.length) return { detected: false, rejected: true, rejectionReason: 'excluded_content', leadScore: 'Reject', relevanceType: 'Indirect Lead', tags: ['Indirect Lead'] };
-
-  const agencyHits = hasAny(textBlob, RELEVANCE_SIGNALS.agencies);
-  const employerHits = hasAny(textBlob, RELEVANCE_SIGNALS.employers);
-  const schoolHits = hasAny(textBlob, RELEVANCE_SIGNALS.schools);
-
-  let leadScore = 'Low';
-  let relevanceType = 'Indirect Lead';
-  const tags = [];
-
-  if (agencyHits.length) {
-    leadScore = 'High';
-    relevanceType = 'J1 Recruiter';
-    tags.push('Local Agency', 'J1 Recruiter');
-  } else if (employerHits.length) {
-    leadScore = 'Medium';
-    relevanceType = employerHits.some((h) => h.includes('restaurant')) ? 'Restaurant Employer' : 'Hotel Employer';
-    tags.push(relevanceType);
-  } else if (schoolHits.length) {
-    leadScore = 'Medium';
-    relevanceType = schoolHits.some((h) => h.includes('tourism')) ? 'Tourism College' : 'Hospitality School';
-    tags.push(relevanceType);
+  if (exclusions.length) {
+    return { detected: false, rejected: true, rejectionReason: 'excluded_content', leadScore: 'Reject', relevanceType: 'Indirect Lead', outputBucket: 'Indirect recruiters', tags: ['Indirect Lead'] };
   }
 
-  return { detected: agencyHits.length + employerHits.length + schoolHits.length > 0, rejected: false, leadScore, relevanceType, tags };
-}
+  const j1CoreHits = hasAny(textBlob, J1_CORE_SIGNALS);
+  const j1HiddenHits = hasAny(textBlob, J1_HIDDEN_SIGNALS);
+  const usaPlacementHits = hasAny(textBlob, ['usa placement', 'placement in usa', 'placement america', 'work in usa', 'internship usa']);
+  const trainingExchangeHits = hasAny(textBlob, ['training', 'trainee', 'exchange', 'internship', 'hospitality training']);
 
+  const generalAgencyHits = hasAny(textBlob, GENERAL_AGENCY_SIGNALS);
+  const schoolHits = hasAny(textBlob, HOSPITALITY_SCHOOL_SIGNALS);
+
+  // Re-ranking boost: USA placement + training/exchange/intern wording => J1 bucket
+  const j1Boost = usaPlacementHits.length > 0 && trainingExchangeHits.length > 0;
+
+  if (j1CoreHits.length || j1HiddenHits.length || j1Boost) {
+    return {
+      detected: true,
+      rejected: false,
+      leadScore: 'High',
+      relevanceType: 'J1 / BridgeUSA ecosystem',
+      outputBucket: 'J1 / BridgeUSA ecosystem (HIGH PRIORITY)',
+      tags: ['Local Agency', 'J1 Recruiter'],
+      semanticHits: { j1CoreHits, j1HiddenHits, usaPlacementHits, trainingExchangeHits }
+    };
+  }
+
+  if (schoolHits.length) {
+    return {
+      detected: true,
+      rejected: false,
+      leadScore: 'Medium',
+      relevanceType: 'Hospitality School',
+      outputBucket: 'Hospitality schools',
+      tags: ['Hospitality School'],
+      semanticHits: { schoolHits }
+    };
+  }
+
+  if (generalAgencyHits.length) {
+    return {
+      detected: true,
+      rejected: false,
+      leadScore: 'Medium',
+      relevanceType: 'General overseas employment agency',
+      outputBucket: 'General overseas employment agencies',
+      tags: ['Indirect Lead'],
+      semanticHits: { generalAgencyHits }
+    };
+  }
+
+  return {
+    detected: true,
+    rejected: false,
+    leadScore: 'Low',
+    relevanceType: 'Indirect Lead',
+    outputBucket: 'Indirect recruiters',
+    tags: ['Indirect Lead'],
+    semanticHits: {}
+  };
+}
 
 function classifyDestination(textBlob) {
   const l = lower(textBlob);
-  const usa = /(usa|united states|america|u\.s\.)/.test(l);
-  const europe = /(europe|uk|germany|france|italy|spain|poland)/.test(l);
-  const me = /(middle east|uae|saudi|qatar|kuwait|oman)/.test(l);
-  if (usa) return 'USA-bound';
-  if (europe) return 'Europe-bound';
-  if (me) return 'Middle East-bound';
+  if (/\b(usa|united states|america|u\.s\.)\b/.test(l)) return 'USA-bound';
+  if (/\b(europe|uk|germany|france|italy|spain|poland)\b/.test(l)) return 'Europe-bound';
+  if (/\b(middle east|uae|saudi|qatar|kuwait|oman)\b/.test(l)) return 'Middle East-bound';
   return 'General abroad';
 }
 
@@ -154,7 +200,7 @@ export async function enrichLeadFromWebsite(place, userAgent, debugLog = () => {
   const visited = [];
 
   if (!website) {
-    return { website: null, emails: [], facebookUrl: null, instagramUrl: null, linkedinUrl: null, whatsappUrl: null, phoneNumbers: [], contactApplyPage: null, formPage: null, visited, relevance: { detected: false, rejected: true, rejectionReason: 'no_site', leadScore: 'Reject', relevanceType: 'Indirect Lead', tags: ['Indirect Lead'] }, locality: { localScore: 0, isLocal: false, isUSBased: false, foreignWithLocal: false, usHints: [], localitySignals: {} } };
+    return { website: null, emails: [], facebookUrl: null, instagramUrl: null, linkedinUrl: null, whatsappUrl: null, phoneNumbers: [], contactApplyPage: null, formPage: null, visited, relevance: { detected: false, rejected: true, rejectionReason: 'no_site', leadScore: 'Reject', relevanceType: 'Indirect Lead', outputBucket: 'Indirect recruiters', tags: ['Indirect Lead'] }, destination: 'General abroad', locality: { localScore: 0, isLocal: false, isUSBased: false, foreignWithLocal: false, usHints: [], localitySignals: {} } };
   }
 
   const urlsToVisit = new Set([website, ...FIXED_PATHS.map((p) => makeAbsoluteUrl(p, website)).filter(Boolean)]);
@@ -186,7 +232,7 @@ export async function enrichLeadFromWebsite(place, userAgent, debugLog = () => {
   if (locality.isUSBased) relevance.tags = [...new Set([...(relevance.tags || []), 'U.S.-Based Organization'])];
   if (locality.foreignWithLocal) relevance.tags = [...new Set([...(relevance.tags || []), 'Local Agency'])];
 
-  debugLog('lead.intent', { name: place.name, relevance, locality });
+  debugLog('lead.intent', { name: place.name, relevance, locality, destination });
 
   return {
     website,

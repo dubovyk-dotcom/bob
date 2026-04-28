@@ -1,23 +1,43 @@
-# USA Partner Lead Engine (Discovery Fix Patch)
+# USA Partner Lead Engine (J1 Detection Fix)
 
-This patch upgrades discovery for low-result countries (e.g., Philippines) with a country ecosystem layer and non-USA-biased outbound recruiting discovery.
+This patch improves J1/BridgeUSA detection and bucketed output ranking.
 
-## Key Fixes
+## J1 semantic expansion
 
-- Adds country-specific recruitment ecosystem terms (e.g., POEA/OFW/manpower/deployment for Philippines).
-- Removes USA-first bias during discovery (find outbound recruitment entities first, classify destination later).
-- Enforces Facebook-first discovery queries for markets where agencies are social-first.
-- Keeps multi-source layers active: search + facebook + local domain + directories + forums.
-- Never returns empty when contactable partial leads exist.
+Engine now treats all of these as J1 ecosystem signals:
 
-## Destination classification
+- J1 visa
+- BridgeUSA
+- Exchange Visitor Program
+- DS-2019 sponsors
+- DS-7002 traineeship
+- cultural exchange programs USA
+- hospitality trainee USA
+- intern USA program
+- summer work travel USA
 
-Leads are classified as:
+## Hidden J1 signals
 
-- USA-bound
-- Europe-bound
-- Middle East-bound
-- General abroad
+Also boosts J1 relevance for indirect phrasing:
+
+- trainee program USA
+- hotel internship USA
+- exchange program USA
+- work & study USA
+- international hospitality training USA
+
+## Re-ranking boost
+
+If a lead has **USA placement + training/exchange/internship wording**, it is boosted into J1 / BridgeUSA bucket.
+
+## Output buckets
+
+Results now include bucket separation:
+
+- J1 / BridgeUSA ecosystem (HIGH PRIORITY)
+- General overseas employment agencies
+- Hospitality schools
+- Indirect recruiters
 
 ## Run
 
