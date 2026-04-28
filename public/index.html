@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>USA Partner Lead Engine</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>USA Partner Lead Engine</h1>
+      <p>Local-country-first lead mining with broad contact channels (website/Facebook/phone/etc.).</p>
+
+      <form id="search-form">
+        <fieldset>
+          <legend>Categories</legend>
+          <label><input type="checkbox" name="categories" value="agencies" checked /> Agencies</label>
+          <label><input type="checkbox" name="categories" value="hotels" checked /> Hotels</label>
+          <label><input type="checkbox" name="categories" value="resorts" /> Resorts</label>
+          <label><input type="checkbox" name="categories" value="restaurants" checked /> Restaurants</label>
+          <label><input type="checkbox" name="categories" value="hospitalityGroups" /> Hospitality Groups</label>
+          <label><input type="checkbox" name="categories" value="seasonalEmployers" /> Seasonal Employers</label>
+          <label><input type="checkbox" name="categories" value="tourismOperators" /> Tourism Operators</label>
+          <label><input type="checkbox" name="categories" value="schools" checked /> Schools</label>
+          <label><input type="checkbox" name="categories" value="usaOrganizations" /> USA Organizations</label>
+        </fieldset>
+
+        <label>Mode
+          <select name="mode"><option value="fast">Fast</option><option value="full">Full Harvest</option></select>
+        </label>
+        <label>Country <input name="country" required placeholder="Madagascar" /></label>
+        <label>City <input name="city" placeholder="Optional" /></label>
+        <label>State / Province <input name="state" placeholder="Optional" /></label>
+        <label>Limit (fast mode) <input name="limit" type="number" min="1" max="500" value="25" /></label>
+
+        <button type="submit">Run Search</button>
+      </form>
+
+      <section id="status"></section>
+      <section id="result-filters"></section>
+      <section id="actions"></section>
+      <section id="table-wrap"></section>
+    </main>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

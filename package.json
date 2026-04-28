@@ -1,0 +1,15 @@
+{
+  "name": "business-contact-finder",
+  "version": "0.1.0",
+  "description": "Find public business emails by location and category",
+  "type": "module",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs",
+    "check": "node --check server.mjs && node --check src/lib/business-search.mjs && node --check src/lib/discovery-providers.mjs && node --check src/lib/website-crawler.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
