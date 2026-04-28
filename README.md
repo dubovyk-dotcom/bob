@@ -1,43 +1,40 @@
-# USA Partner Lead Engine (J1 Detection Fix)
+# Global J1 / USA Partner Discovery Engine
 
-This patch improves J1/BridgeUSA detection and bucketed output ranking.
+## Final Master Upgrade
 
-## J1 semantic expansion
+- Worldwide country support with country language model + English fallback.
+- Multi-pass discovery (English, local language, hybrid, social, directories/forums).
+- Expanded J1 semantic detection (J1, BridgeUSA, Exchange Visitor, DS-2019, DS-7002, Summer Work Travel, trainee/intern USA signals).
+- Hidden J1 re-ranking boost: USA placement + training/exchange/intern wording => J1 bucket.
+- Output buckets:
+  - J1 / BridgeUSA ecosystem (HIGH PRIORITY)
+  - General overseas employment agencies
+  - Hospitality schools
+  - Indirect recruiters
+- Contact acceptance remains broad (email not required).
 
-Engine now treats all of these as J1 ecosystem signals:
+## Export (Production-grade)
 
-- J1 visa
-- BridgeUSA
-- Exchange Visitor Program
-- DS-2019 sponsors
-- DS-7002 traineeship
-- cultural exchange programs USA
-- hospitality trainee USA
-- intern USA program
-- summer work travel USA
+Uses **exceljs** for real `.xlsx` generation with:
 
-## Hidden J1 signals
+- bold header row
+- autofilter
+- auto column width
+- clickable links (email/website/facebook)
+- UTF-8 clean export
 
-Also boosts J1 relevance for indirect phrasing:
+Also supports `.csv` export.
 
-- trainee program USA
-- hotel internship USA
-- exchange program USA
-- work & study USA
-- international hospitality training USA
+## UI Filters
 
-## Re-ranking boost
-
-If a lead has **USA placement + training/exchange/internship wording**, it is boosted into J1 / BridgeUSA bucket.
-
-## Output buckets
-
-Results now include bucket separation:
-
-- J1 / BridgeUSA ecosystem (HIGH PRIORITY)
-- General overseas employment agencies
-- Hospitality schools
-- Indirect recruiters
+- J1 Agencies
+- Work and Travel USA
+- Schools
+- Hotels
+- Restaurants
+- Recruiters
+- Facebook-only leads
+- Website-only leads
 
 ## Run
 

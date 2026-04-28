@@ -11,100 +11,98 @@ export const CATEGORY_LABELS = {
 };
 
 const LANGUAGE_MAP = {
-  Philippines: ['en', 'tl'], Madagascar: ['fr', 'mg', 'en'], Vietnam: ['vi', 'en'], Brazil: ['pt', 'en'], Morocco: ['ar', 'fr', 'en'], China: ['zh', 'en'], Nepal: ['ne', 'en'], Ghana: ['en']
+  USA: ['en'], Canada: ['en', 'fr'], Mexico: ['es', 'en'],
+  Brazil: ['pt', 'en'], Argentina: ['es', 'en'], Chile: ['es', 'en'], Colombia: ['es', 'en'], Peru: ['es', 'en'], Ecuador: ['es', 'en'], Bolivia: ['es', 'en'], Uruguay: ['es', 'en'],
+  UK: ['en'], France: ['fr', 'en'], Germany: ['de', 'en'], Spain: ['es', 'en'], Italy: ['it', 'en'], Poland: ['pl', 'en'], Ukraine: ['uk', 'en'], Turkey: ['tr', 'en'], Kazakhstan: ['ru', 'kk', 'en'],
+  Morocco: ['ar', 'fr', 'en'], Algeria: ['ar', 'fr', 'en'], Tunisia: ['ar', 'fr', 'en'], Egypt: ['ar', 'en'], Nigeria: ['en'], Kenya: ['en', 'sw'], Ghana: ['en'], 'South Africa': ['en'], Ethiopia: ['am', 'en'], Madagascar: ['fr', 'mg', 'en'],
+  China: ['zh', 'en'], Japan: ['ja', 'en'], 'South Korea': ['ko', 'en'], India: ['en', 'hi'], Pakistan: ['ur', 'en'], Bangladesh: ['bn', 'en'], Vietnam: ['vi', 'en'], Thailand: ['th', 'en'], Indonesia: ['id', 'en'], Philippines: ['en', 'tl'], Malaysia: ['ms', 'en'], 'Sri Lanka': ['si', 'en'], Nepal: ['ne', 'en'],
+  UAE: ['ar', 'en'], 'Saudi Arabia': ['ar', 'en'], Qatar: ['ar', 'en'], Jordan: ['ar', 'en'], Israel: ['he', 'en'],
+  Australia: ['en'], 'New Zealand': ['en']
 };
 
-const COUNTRY_TLD = { Philippines: 'ph', Madagascar: 'mg', Vietnam: 'vn', Brazil: 'br', Morocco: 'ma', China: 'cn', Nepal: 'np', Ghana: 'gh' };
+const COUNTRY_TLD = { Philippines: 'ph', Madagascar: 'mg', Vietnam: 'vn', Brazil: 'br', Morocco: 'ma', China: 'cn', Nepal: 'np', Ghana: 'gh', Mexico: 'mx', Poland: 'pl', Kazakhstan: 'kz', Thailand: 'th' };
 
 const COUNTRY_RECRUITMENT_ECOSYSTEM = {
-  Philippines: [
-    'POEA licensed agencies',
-    'overseas manpower agencies',
-    'deployment agencies abroad',
-    'work abroad recruitment Philippines',
-    'OFW recruitment agencies',
-    'direct hiring abroad Philippines',
-    'abroad employment agency',
-    'overseas jobs recruitment',
-    'deployment agency',
-    'manpower agency',
-    'work overseas'
-  ]
+  Philippines: ['POEA licensed agencies', 'overseas manpower agencies', 'deployment agencies abroad', 'work abroad recruitment Philippines', 'OFW recruitment agencies', 'direct hiring abroad Philippines'],
+  Poland: ['agencja pracy USA', 'program work and travel USA'],
+  Kazakhstan: ['агентство работа в сша', 'стажировка сша агентство'],
+  Madagascar: ['agence de placement USA Madagascar', 'recrutement saisonnier USA Madagascar']
 };
 
-const GLOBAL_OUTBOUND_INTENTS = ['work abroad agency', 'overseas recruitment', 'abroad employment', 'deployment agency', 'manpower agency', 'international placement agency'];
+const GLOBAL_J1_INTENTS = ['Work and Travel USA', 'J1 visa agency', 'student exchange USA', 'internship USA agency', 'hotel trainee USA', 'seasonal USA jobs students'];
+
+const LOCAL_TRANSLATIONS = {
+  en: ['work abroad agency', 'overseas recruitment', 'international placement'],
+  fr: ['agence recrutement international', 'programme échange USA', 'agence de placement USA'],
+  es: ['agencia de empleo en el extranjero', 'intercambio USA', 'prácticas USA'],
+  pt: ['agência trabalho no exterior', 'intercâmbio EUA', 'estágio EUA'],
+  tl: ['ahensya trabaho abroad', 'work and travel usa', 'recruitment overseas jobs'],
+  vi: ['thực tập mỹ', 'việc làm mỹ chương trình', 'tuyển dụng đi mỹ'],
+  ar: ['وكالة توظيف بالخارج', 'برنامج تبادل امريكا', 'تدريب امريكا'],
+  zh: ['美国 实习 中介', '美国 交换 项目', '美国 工作 项目'],
+  pl: ['agencja j1 usa', 'work and travel usa', 'staż usa'],
+  uk: ['агенція j1 сша', 'обмінна програма сша', 'стажування сша'],
+  ru: ['агентство j1 сша', 'программа обмена сша', 'стажировка сша'],
+  kk: ['j1 агенттігі ақш', 'ақш тағылымдама бағдарламасы'],
+  tr: ['j1 ajansı abd', 'abd staj programı', 'work and travel abd'],
+  th: ['เอเจนซี่ j1 usa', 'โครงการฝึกงาน usa', 'work and travel usa'],
+  mg: ['agence de placement usa', 'asa any ivelany usa']
+};
+
 const CATEGORY_QUERIES = {
   agencies: ['recruitment agency abroad', 'overseas placement agency'],
-  hotels: ['hotel overseas hiring', 'hospitality employer abroad'],
-  resorts: ['resort recruitment abroad', 'seasonal resort hiring'],
-  restaurants: ['restaurant employer abroad', 'culinary staffing agency'],
+  hotels: ['hotel employer hospitality trainees'],
+  resorts: ['resort recruitment abroad'],
+  restaurants: ['restaurant employer abroad'],
   hospitalityGroups: ['hospitality group recruitment'],
   seasonalEmployers: ['seasonal employer recruitment'],
   tourismOperators: ['tourism operator staffing abroad'],
-  schools: ['hospitality school international placement', 'tourism college overseas internship'],
-  usaOrganizations: ['international exchange visitor organization']
+  schools: ['hospitality school usa pathway', 'tourism college usa training'],
+  usaOrganizations: ['exchange visitor organization usa']
 };
 
-const LOCAL_TRANSLATIONS = {
-  fr: ['agence recrutement international', 'emploi à l étranger', 'agence de placement'],
-  es: ['agencia de empleo en el extranjero', 'reclutamiento internacional', 'trabajo en el extranjero'],
-  pt: ['agência de emprego no exterior', 'recrutamento internacional', 'trabalho no exterior'],
-  tl: ['ahensya trabaho abroad', 'recruitment overseas jobs', 'deployment agency'],
-  vi: ['công ty xuất khẩu lao động', 'việc làm nước ngoài', 'đơn vị tuyển dụng quốc tế'],
-  ar: ['وكالة توظيف بالخارج', 'توظيف دولي', 'وظائف خارج البلد'],
-  zh: ['海外招聘中介', '出国工作中介', '国际劳务公司'],
-  mg: ['asa any ivelany', 'agence de placement', 'recrutement international'],
-  ne: ['विदेश रोजगार एजेन्सी', 'विदेशी रोजगारी भर्ती'],
-  en: ['work abroad agency', 'overseas jobs recruitment', 'international placement']
-};
-
-function getLanguages(country) {
-  return LANGUAGE_MAP[country] || ['en'];
-}
-
-function tldSet(country) {
-  return [COUNTRY_TLD[country] || country.slice(0, 2).toLowerCase()];
-}
+const getLanguages = (country) => LANGUAGE_MAP[country] || ['en'];
+const tldSet = (country) => [COUNTRY_TLD[country] || country.slice(0, 2).toLowerCase()];
 
 function makeLayeredQueries({ categories, city, state, country, isFallback = false }) {
   const loc = [city, state].filter(Boolean).join(', ');
   const langs = getLanguages(country);
 
-  const localLanguageTerms = langs.flatMap((l) => LOCAL_TRANSLATIONS[l] || []);
+  const localTerms = langs.flatMap((l) => LOCAL_TRANSLATIONS[l] || LOCAL_TRANSLATIONS.en);
   const ecosystemTerms = COUNTRY_RECRUITMENT_ECOSYSTEM[country] || [];
-
   const layers = [];
 
-  // Layer 1: search engine (generic outbound first)
-  layers.push(...GLOBAL_OUTBOUND_INTENTS.map((q) => ({ layer: 'search_engine', query: `${country} ${q}` })));
-  layers.push(...localLanguageTerms.map((q) => ({ layer: 'search_engine', query: `${country} ${q}` })));
+  // Pass 1 English queries
+  layers.push(...GLOBAL_J1_INTENTS.map((q) => ({ layer: 'pass1_english', query: `${country} ${q}` })));
 
-  // Layer 2: country ecosystem terms
-  layers.push(...ecosystemTerms.map((q) => ({ layer: 'country_ecosystem', query: q.includes(country) ? q : `${country} ${q}` })));
+  // Pass 2 Local-language queries
+  layers.push(...localTerms.map((q) => ({ layer: 'pass2_local_language', query: `${country} ${q}` })));
 
-  // Layer 3: facebook-first, especially PH
-  layers.push({ layer: 'facebook_discovery', query: `facebook work abroad ${country}` });
-  layers.push({ layer: 'facebook_discovery', query: `facebook recruitment agency ${country}` });
-  layers.push({ layer: 'facebook_discovery', query: `messenger recruitment ${country}` });
+  // Pass 3 Hybrid intent
+  layers.push(...categories.flatMap((cat) => (CATEGORY_QUERIES[cat] || []).map((q) => ({ layer: 'pass3_hybrid', query: `${country} ${q} USA` }))));
+  layers.push(...ecosystemTerms.map((q) => ({ layer: 'pass3_hybrid', query: q.includes(country) ? q : `${country} ${q}` })));
 
-  // Layer 4: local domain scan
+  // Pass 4 Social discovery
+  layers.push({ layer: 'pass4_social', query: `facebook work abroad ${country}` });
+  layers.push({ layer: 'pass4_social', query: `facebook recruitment agency ${country}` });
+  layers.push({ layer: 'pass4_social', query: `facebook summer work travel ${country}` });
+
+  // Pass 5 Directories/forums/portals
+  layers.push({ layer: 'pass5_directories', query: `${country} business directory recruitment` });
+  layers.push({ layer: 'pass5_directories', query: `${country} hospitality schools directory` });
+  layers.push({ layer: 'pass5_directories', query: `${country} recruitment board overseas jobs` });
+  layers.push({ layer: 'pass5_forums', query: `forum work abroad ${country}` });
+  layers.push({ layer: 'pass5_forums', query: `reddit ${country} work and travel usa` });
+
+  // local domain scanner booster
   for (const tld of tldSet(country)) {
-    layers.push({ layer: 'local_domain_scan', query: `site:.${tld} ${country} recruitment agency abroad` });
-    layers.push({ layer: 'local_domain_scan', query: `site:.${tld} ${country} manpower agency` });
+    layers.push({ layer: 'local_domain_scan', query: `site:.${tld} ${country} recruitment agency usa` });
+    layers.push({ layer: 'local_domain_scan', query: `site:.${tld} ${country} work abroad agency` });
   }
 
-  // Layer 5: directories + forums
-  layers.push({ layer: 'directories', query: `${country} business directory recruitment` });
-  layers.push({ layer: 'directories', query: `${country} yellow pages recruitment agency` });
-  layers.push({ layer: 'forums', query: `forum work abroad ${country}` });
-  layers.push({ layer: 'forums', query: `reddit ${country} work abroad agency` });
-
-  // category hybrid
-  layers.push(...categories.flatMap((cat) => (CATEGORY_QUERIES[cat] || []).map((q) => ({ layer: 'hybrid', query: `${country} ${q}` }))));
-
   if (isFallback) {
-    layers.push({ layer: 'booster', query: `${country} overseas jobs facebook page` });
-    layers.push({ layer: 'booster', query: `${country} deployment agency directory` });
+    layers.push({ layer: 'fallback', query: `${country} facebook page work abroad` });
+    layers.push({ layer: 'fallback', query: `${country} agency students usa pathway` });
   }
 
   const dedup = [];
@@ -116,7 +114,6 @@ function makeLayeredQueries({ categories, city, state, country, isFallback = fal
     seen.add(key);
     dedup.push({ layer: item.layer, query });
   }
-
   return dedup;
 }
 
@@ -189,7 +186,6 @@ export async function discoverBusinesses({ categories, city, state, country, lim
         debugLog('query.error', { query: item.query, layer: item.layer, error: e.message });
       }
     }
-
     return all;
   };
 
@@ -208,5 +204,5 @@ export async function discoverBusinesses({ categories, city, state, country, lim
     uniq.push(x);
   }
 
-  return mode === 'full' ? uniq : uniq.slice(0, Math.max(limit * 6, 90));
+  return mode === 'full' ? uniq : uniq.slice(0, Math.max(limit * 6, 100));
 }

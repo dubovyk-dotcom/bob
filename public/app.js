@@ -8,11 +8,12 @@ let lastData = null;
 let sortKey = 'leadScore';
 let sortDir = 'desc';
 let activeFilters = {
-  agencies: true,
+  j1Agencies: true,
+  workTravel: true,
+  schools: true,
   hotels: true,
   restaurants: true,
-  schools: true,
-  usaOrganizations: true,
+  recruiters: true,
   facebookOnly: false,
   websiteOnly: false
 };
@@ -46,7 +47,18 @@ async function exportFormat(format) {
   const res = await fetch('/api/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
   const data = await res.json();
   const type = format === 'xlsx' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'text/csv;charset=utf-8';
-  downloadContent(data.export.content, data.export.filename, type);
+  if (format === 'xlsx' && data.export.encoding === 'base64') {
+    const bytes = Uint8Array.from(atob(data.export.content), (c) => c.charCodeAt(0));
+    const blob = new Blob([bytes], { type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = data.export.filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  } else {
+    downloadContent(data.export.content, data.export.filename, type);
+  }
 }
 
 function copyField(field) {
@@ -58,11 +70,13 @@ function scoreOrder(score) { return score === 'High' ? 3 : score === 'Medium' ? 
 
 function passesFilter(lead) {
   const r = (lead.relevanceType || '').toLowerCase();
-  if (!activeFilters.agencies && (r.includes('j1') || r.includes('agency') || r.includes('recruiter'))) return false;
+  const bucket = (lead.outputBucket || '').toLowerCase();
+  if (!activeFilters.j1Agencies && (bucket.includes('j1') || r.includes('j1'))) return false;
+  if (!activeFilters.workTravel && (r.includes('work and travel') || (lead.notes || '').toLowerCase().includes('work and travel'))) return false;
+  if (!activeFilters.schools && (r.includes('school') || r.includes('college'))) return false;
   if (!activeFilters.hotels && r.includes('hotel')) return false;
   if (!activeFilters.restaurants && r.includes('restaurant')) return false;
-  if (!activeFilters.schools && (r.includes('school') || r.includes('college'))) return false;
-  if (!activeFilters.usaOrganizations && (lead.tags || []).includes('U.S.-Based Organization')) return false;
+  if (!activeFilters.recruiters && (r.includes('agency') || r.includes('recruiter') || bucket.includes('employment'))) return false;
   if (activeFilters.facebookOnly && !lead.facebookUrl) return false;
   if (activeFilters.websiteOnly && !lead.website) return false;
   return true;
@@ -87,11 +101,12 @@ function sortedResults(results) {
 function renderFilters() {
   filtersNode.innerHTML = `
     <div class="actions">
-      <label><input type="checkbox" data-f="agencies" ${activeFilters.agencies ? 'checked' : ''}/> Agencies</label>
+      <label><input type="checkbox" data-f="j1Agencies" ${activeFilters.j1Agencies ? 'checked' : ''}/> J1 Agencies</label>
+      <label><input type="checkbox" data-f="workTravel" ${activeFilters.workTravel ? 'checked' : ''}/> Work and Travel USA</label>
+      <label><input type="checkbox" data-f="schools" ${activeFilters.schools ? 'checked' : ''}/> Schools</label>
       <label><input type="checkbox" data-f="hotels" ${activeFilters.hotels ? 'checked' : ''}/> Hotels</label>
       <label><input type="checkbox" data-f="restaurants" ${activeFilters.restaurants ? 'checked' : ''}/> Restaurants</label>
-      <label><input type="checkbox" data-f="schools" ${activeFilters.schools ? 'checked' : ''}/> Schools</label>
-      <label><input type="checkbox" data-f="usaOrganizations" ${activeFilters.usaOrganizations ? 'checked' : ''}/> USA Organizations</label>
+      <label><input type="checkbox" data-f="recruiters" ${activeFilters.recruiters ? 'checked' : ''}/> Recruiters</label>
       <label><input type="checkbox" data-f="facebookOnly" ${activeFilters.facebookOnly ? 'checked' : ''}/> Facebook-only leads</label>
       <label><input type="checkbox" data-f="websiteOnly" ${activeFilters.websiteOnly ? 'checked' : ''}/> Website-only leads</label>
     </div>
