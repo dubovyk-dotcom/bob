@@ -1,32 +1,69 @@
-# Business Contact Finder (Lead Engine Upgrade)
+# USA Partner Lead Engine
 
-This project is a lead intelligence engine for J1 / internship / hospitality / placement ecosystems.
+This build is optimized for **U.S.-focused partner lead generation**.
 
-## Reliability Improvements in This Version
+## Target Leads (only)
 
-- Full pipeline debug logging (terminal + optional API debug payload).
-- Less aggressive filtering: leads are kept when **any** contact route exists.
-- Expanded contact extraction: email, phone, WhatsApp, Facebook, Instagram, LinkedIn, contact/apply/form pages.
-- Broader intent matching with expanded signals (`work and travel`, `bridgeusa`, `camp counselor`, `au pair`, etc.).
-- Automatic fallback expansion queries when discovery is weak.
-- Multi-provider discovery (`Nominatim` + `DuckDuckGo` web results).
-- Rejection reasons tracked (`no_site`, `no_contact_route`, `irrelevant_content`, etc.).
-- UI now shows discovered/crawled/qualified/rejected counts, providers, retries, runtime, and debug trace.
+- J1 agencies
+- Work and Travel USA recruiters
+- USA internship placement agencies
+- DS-2019 / BridgeUSA ecosystem partners
+- hospitality/culinary/tourism schools with USA pathways
+- seasonal USA worker recruiters
 
-## Inclusion Rule
+## Strict Exclusions
 
-A lead is kept if relevance is detected and **at least one** contact channel exists:
+Automatically rejected:
 
-- website
-- email
-- Facebook
-- Instagram
-- LinkedIn
-- WhatsApp
-- contact/apply/form page
-- phone number
+- backpacking/travel blogs
+- volunteer programs
+- generic tours agencies
+- embassy/state department pages
+- visa news blogs / immigration law blogs
+- local internships without USA pipeline
+- affiliate/listicle content
 
-## Run Locally
+## USA Intent Requirement
+
+Leads are strongly filtered by USA signals like:
+
+`USA`, `United States`, `America`, `Work and Travel USA`, `Internship USA`, `J1`, `BridgeUSA`, `DS-2019`.
+
+## Search Modes
+
+- **Fast Mode**: prioritize top results and return quickly.
+- **Full Harvest Mode**: crawl all discovered candidates, no early stop.
+
+## Exports
+
+One-click exports in UI:
+
+- CSV
+- Excel (`.xlsx` spreadsheet XML output)
+
+Export columns:
+
+1. Email
+2. Website
+3. Facebook
+4. Business Name
+5. Country
+6. Contact Page
+7. Instagram
+8. Lead Score
+9. Relevance Type
+10. Notes
+
+## UI Utilities
+
+- Export CSV
+- Export Excel
+- Copy Emails Only
+- Copy Websites Only
+- Copy Facebook Only
+- Sortable compact table view (`Email | Website | Facebook | Name | Score`)
+
+## Run
 
 ```bash
 cp .env.example .env
@@ -35,15 +72,3 @@ npm start
 ```
 
 Open: http://127.0.0.1:3005
-
-## Debug Mode
-
-Enable **Include debug logs in API response** in the web UI, or send `"debug": true` in `POST /api/search`.
-
-## Commands
-
-```bash
-npm start
-npm run dev
-npm run check
-```
