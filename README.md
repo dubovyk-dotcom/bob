@@ -1,40 +1,29 @@
 # Global J1 / USA Partner Discovery Engine
 
-## Final Master Upgrade
+## Export System Emergency Fix
 
-- Worldwide country support with country language model + English fallback.
-- Multi-pass discovery (English, local language, hybrid, social, directories/forums).
-- Expanded J1 semantic detection (J1, BridgeUSA, Exchange Visitor, DS-2019, DS-7002, Summer Work Travel, trainee/intern USA signals).
-- Hidden J1 re-ranking boost: USA placement + training/exchange/intern wording => J1 bucket.
-- Output buckets:
-  - J1 / BridgeUSA ecosystem (HIGH PRIORITY)
-  - General overseas employment agencies
-  - Hospitality schools
-  - Indirect recruiters
-- Contact acceptance remains broad (email not required).
+### Primary reliable workflow
 
-## Export (Production-grade)
+- **Copy Table** (pipe-separated plain text):
+  - `EMAIL | WEBSITE | FACEBOOK | NAME | COUNTRY`
+  - instant clipboard output
+  - ready for Excel paste
 
-Uses **exceljs** for real `.xlsx` generation with:
+### Safe file export
 
-- bold header row
-- autofilter
-- auto column width
-- clickable links (email/website/facebook)
-- UTF-8 clean export
+- **CSV export** (UTF-8, escaped fields, spreadsheet-safe)
 
-Also supports `.csv` export.
+### Excel export
 
-## UI Filters
+- Uses `exceljs` when available for real `.xlsx` generation
+- Includes bold headers, autofilter, auto-width columns, clickable links
+- If XLSX generation is unavailable/invalid, export auto-falls back to **Copy Table** mode (never returns corrupted XLSX)
 
-- J1 Agencies
-- Work and Travel USA
-- Schools
-- Hotels
-- Restaurants
-- Recruiters
-- Facebook-only leads
-- Website-only leads
+## Discovery
+
+- Global multilingual multi-pass discovery
+- J1/BridgeUSA semantic detection + hidden signal boosts
+- Category and recruiter filters in UI
 
 ## Run
 

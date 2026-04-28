@@ -31,6 +31,22 @@ function getFormPayload() {
   };
 }
 
+
+function buildPipeTable(results) {
+  const headers = ['EMAIL', 'WEBSITE', 'FACEBOOK', 'NAME', 'COUNTRY'];
+  const lines = results.map((r) =>
+    [r.email || '', r.website || '', r.facebookUrl || '', r.businessName || '', r.country || '']
+      .map((v) => String(v).replace(/\r?\n/g, ' ').replace(/\|/g, '/').trim())
+      .join(' | ')
+  );
+  return [headers.join(' | '), ...lines].join('\n');
+}
+
+function copyTable() {
+  if (!lastData?.results?.length) return;
+  navigator.clipboard.writeText(buildPipeTable(lastData.results));
+}
+
 function downloadContent(content, filename, type) {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
@@ -47,7 +63,7 @@ async function exportFormat(format) {
   const res = await fetch('/api/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
   const data = await res.json();
   const type = format === 'xlsx' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'text/csv;charset=utf-8';
-  if (format === 'xlsx' && data.export.encoding === 'base64') {
+  if (format === 'xlsx' && data.export.format === 'xlsx' && data.export.encoding === 'base64') {
     const bytes = Uint8Array.from(atob(data.export.content), (c) => c.charCodeAt(0));
     const blob = new Blob([bytes], { type });
     const url = URL.createObjectURL(blob);
@@ -56,6 +72,8 @@ async function exportFormat(format) {
     a.download = data.export.filename;
     a.click();
     URL.revokeObjectURL(url);
+  } else if (format === 'xlsx' && data.export.format === 'copy') {
+    navigator.clipboard.writeText(data.export.content);
   } else {
     downloadContent(data.export.content, data.export.filename, type);
   }
@@ -155,6 +173,7 @@ function renderActions() {
     <button type="button" id="copy-emails">Copy Emails Only</button>
     <button type="button" id="copy-websites">Copy Websites Only</button>
     <button type="button" id="copy-facebook">Copy Facebook Only</button>
+    <button type="button" id="copy-table">Copy Table</button>
   </div>`;
 
   document.querySelector('#export-csv')?.addEventListener('click', () => exportFormat('csv'));
@@ -162,6 +181,7 @@ function renderActions() {
   document.querySelector('#copy-emails')?.addEventListener('click', () => copyField('email'));
   document.querySelector('#copy-websites')?.addEventListener('click', () => copyField('website'));
   document.querySelector('#copy-facebook')?.addEventListener('click', () => copyField('facebookUrl'));
+  document.querySelector('#copy-table')?.addEventListener('click', copyTable);
 }
 
 function renderStatus(data) {

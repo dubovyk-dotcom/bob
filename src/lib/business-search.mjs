@@ -42,6 +42,14 @@ function exportRows(results) {
   }));
 }
 
+
+function toPipeTable(results) {
+  const headers = ['EMAIL', 'WEBSITE', 'FACEBOOK', 'NAME', 'COUNTRY'];
+  const rows = results.map((lead) => [lead.email || '', lead.website || '', lead.facebookUrl || '', lead.businessName || '', lead.country || '']);
+  const sanitize = (v) => String(v ?? '').replace(/\r?\n/g, ' ').replace(/\|/g, '/').trim();
+  return [headers.join(' | '), ...rows.map((r) => r.map(sanitize).join(' | '))].join('\n');
+}
+
 function toCsv(results) {
   const rows = exportRows(results);
   const headers = Object.keys(rows[0] || { Email: '', Website: '', Facebook: '', 'Business Name': '', Country: '', 'Contact Page': '', Instagram: '', Category: '', 'Lead Score': '', Notes: '' });
@@ -57,35 +65,39 @@ async function toExcelWorkbookBase64(results) {
   try {
     ({ default: ExcelJS } = await import('exceljs'));
   } catch {
-    const csvLike = toCsv(results);
-    return Buffer.from(csvLike, 'utf8').toString('base64');
+    return null;
   }
 
-  const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet('Leads');
-  sheet.addRow(headers);
-  const headerRow = sheet.getRow(1);
-  headerRow.font = { bold: true };
-  sheet.autoFilter = { from: 'A1', to: String.fromCharCode(64 + headers.length) + '1' };
+  try {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Leads');
+    sheet.addRow(headers);
+    const headerRow = sheet.getRow(1);
+    headerRow.font = { bold: true };
+    sheet.autoFilter = { from: 'A1', to: String.fromCharCode(64 + headers.length) + '1' };
 
-  for (const row of rows) {
-    const values = headers.map((h) => row[h] ?? '');
-    const added = sheet.addRow(values);
-    const websiteIdx = headers.indexOf('Website') + 1;
-    const fbIdx = headers.indexOf('Facebook') + 1;
-    const emailIdx = headers.indexOf('Email') + 1;
-    if (websiteIdx && row.Website) added.getCell(websiteIdx).value = { text: row.Website, hyperlink: row.Website };
-    if (fbIdx && row.Facebook) added.getCell(fbIdx).value = { text: row.Facebook, hyperlink: row.Facebook };
-    if (emailIdx && row.Email) added.getCell(emailIdx).value = { text: row.Email, hyperlink: `mailto:${row.Email}` };
+    for (const row of rows) {
+      const values = headers.map((h) => row[h] ?? '');
+      const added = sheet.addRow(values);
+      const websiteIdx = headers.indexOf('Website') + 1;
+      const fbIdx = headers.indexOf('Facebook') + 1;
+      const emailIdx = headers.indexOf('Email') + 1;
+      if (websiteIdx && row.Website) added.getCell(websiteIdx).value = { text: row.Website, hyperlink: row.Website };
+      if (fbIdx && row.Facebook) added.getCell(fbIdx).value = { text: row.Facebook, hyperlink: row.Facebook };
+      if (emailIdx && row.Email) added.getCell(emailIdx).value = { text: row.Email, hyperlink: `mailto:${row.Email}` };
+    }
+
+    headers.forEach((h, i) => {
+      const max = Math.max(h.length, ...rows.map((r) => String(r[h] || '').length).slice(0, 200));
+      sheet.getColumn(i + 1).width = Math.min(60, Math.max(14, max + 2));
+    });
+
+    const buf = await workbook.xlsx.writeBuffer();
+    if (!buf || !buf.byteLength) return null;
+    return Buffer.from(buf).toString('base64');
+  } catch {
+    return null;
   }
-
-  headers.forEach((h, i) => {
-    const max = Math.max(h.length, ...rows.map((r) => String(r[h] || '').length).slice(0, 200));
-    sheet.getColumn(i + 1).width = Math.min(60, Math.max(14, max + 2));
-  });
-
-  const buf = await workbook.xlsx.writeBuffer();
-  return Buffer.from(buf).toString('base64');
 }
 
 async function mapWithConcurrency(items, concurrency, mapper) {
@@ -261,12 +273,22 @@ export async function runBusinessContactSearch(input, userAgent) {
 
   const stamp = Date.now();
   if (input.export === 'xlsx') {
-    response.export = {
-      format: 'xlsx',
-      filename: `lead-engine-${input.country.toLowerCase()}-${stamp}.xlsx`,
-      encoding: 'base64',
-      content: await toExcelWorkbookBase64(results)
-    };
+    const base64 = await toExcelWorkbookBase64(results);
+    if (base64) {
+      response.export = {
+        format: 'xlsx',
+        filename: `lead-engine-${input.country.toLowerCase()}-${stamp}.xlsx`,
+        encoding: 'base64',
+        content: base64
+      };
+    } else {
+      response.export = {
+        format: 'copy',
+        filename: `lead-engine-${input.country.toLowerCase()}-${stamp}.txt`,
+        content: toPipeTable(results),
+        fallbackReason: 'xlsx_unavailable_or_invalid'
+      };
+    }
   } else {
     response.export = {
       format: 'csv',
