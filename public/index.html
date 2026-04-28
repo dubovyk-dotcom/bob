@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Business Contact Finder - Lead Engine</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>Business Contact Finder · Lead Engine Upgrade</h1>
+      <p>Discover high-potential J1, internship, hospitality, and placement leads by intent (not exact name matching).</p>
+
+      <form id="search-form">
+        <fieldset>
+          <legend>Search focus</legend>
+          <label><input type="checkbox" name="categories" value="hotels" checked /> Hotels</label>
+          <label><input type="checkbox" name="categories" value="restaurants" /> Restaurants</label>
+          <label><input type="checkbox" name="categories" value="schools" checked /> Hospitality Schools</label>
+          <label><input type="checkbox" name="categories" value="j1Agencies" checked /> J1 / Placement Agencies</label>
+        </fieldset>
+
+        <label>City <input name="city" placeholder="Optional for broader coverage" /></label>
+        <label>State / Province <input name="state" placeholder="Optional" /></label>
+        <label>Country <input name="country" placeholder="Philippines" required /></label>
+        <label>Result limit <input name="limit" type="number" min="1" max="200" value="25" /></label>
+        <label><input type="checkbox" name="debug" value="1" /> Include debug logs in API response</label>
+
+        <button type="submit">Run Lead Search</button>
+      </form>
+
+      <section id="status"></section>
+      <section id="results"></section>
+      <section id="debug"></section>
+    </main>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
