@@ -1,26 +1,23 @@
-# USA Partner Lead Engine (True Discovery Mode)
+# USA Partner Lead Engine (Discovery Fix Patch)
 
-This build uses a **multi-source global discovery crawler** instead of single search-only logic.
+This patch upgrades discovery for low-result countries (e.g., Philippines) with a country ecosystem layer and non-USA-biased outbound recruiting discovery.
 
-## 5 Discovery Layers per country search
+## Key Fixes
 
-1. Search engine basic (English + local language intents)
-2. Local domain scan (`site:.countryTLD`, plus `.fr` for Francophone markets)
-3. Facebook discovery queries
-4. Directory/listing discovery queries
-5. Forum/community discovery queries (incl. Reddit/expat/forum patterns)
+- Adds country-specific recruitment ecosystem terms (e.g., POEA/OFW/manpower/deployment for Philippines).
+- Removes USA-first bias during discovery (find outbound recruitment entities first, classify destination later).
+- Enforces Facebook-first discovery queries for markets where agencies are social-first.
+- Keeps multi-source layers active: search + facebook + local domain + directories + forums.
+- Never returns empty when contactable partial leads exist.
 
-## Global multilingual behavior
+## Destination classification
 
-- country-level language model with English fallback
-- local-language query generation for each country
-- hybrid recruitment + USA query pass
-- booster pass when discovery is weak
+Leads are classified as:
 
-## Lead acceptance
-
-Lead is valid with any contact route (email not required):
-website, Facebook, Instagram, LinkedIn, WhatsApp, phone, or contact/apply page.
+- USA-bound
+- Europe-bound
+- Middle East-bound
+- General abroad
 
 ## Run
 

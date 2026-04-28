@@ -133,6 +133,18 @@ function classifyLead(textBlob) {
   return { detected: agencyHits.length + employerHits.length + schoolHits.length > 0, rejected: false, leadScore, relevanceType, tags };
 }
 
+
+function classifyDestination(textBlob) {
+  const l = lower(textBlob);
+  const usa = /(usa|united states|america|u\.s\.)/.test(l);
+  const europe = /(europe|uk|germany|france|italy|spain|poland)/.test(l);
+  const me = /(middle east|uae|saudi|qatar|kuwait|oman)/.test(l);
+  if (usa) return 'USA-bound';
+  if (europe) return 'Europe-bound';
+  if (me) return 'Middle East-bound';
+  return 'General abroad';
+}
+
 export async function enrichLeadFromWebsite(place, userAgent, debugLog = () => {}, country = '') {
   const website = normalizeWebsiteUrl(place.website);
   const contactPages = new Set(); const formPages = new Set();
@@ -169,6 +181,7 @@ export async function enrichLeadFromWebsite(place, userAgent, debugLog = () => {
   for (const url of [...contactPages].slice(0, 6)) if (!visited.includes(url)) await crawlAndExtract(url);
 
   const relevance = classifyLead(combinedText);
+  const destination = classifyDestination(combinedText);
   const locality = inferLocality({ textBlob: combinedText, website, phones: [...phones], country });
   if (locality.isUSBased) relevance.tags = [...new Set([...(relevance.tags || []), 'U.S.-Based Organization'])];
   if (locality.foreignWithLocal) relevance.tags = [...new Set([...(relevance.tags || []), 'Local Agency'])];
@@ -187,6 +200,7 @@ export async function enrichLeadFromWebsite(place, userAgent, debugLog = () => {
     formPage: [...formPages][0] || null,
     visited,
     relevance,
+    destination,
     locality
   };
 }

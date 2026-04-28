@@ -140,8 +140,10 @@ export async function runBusinessContactSearch(input, userAgent) {
     }
 
     if (!enriched.relevance.detected || enriched.relevance.rejected) {
-      rejected.push({ name: place.name, reason: enriched.relevance.rejectionReason || 'irrelevant' });
-      return null;
+      if (!hasContactChannel(enriched)) {
+        rejected.push({ name: place.name, reason: enriched.relevance.rejectionReason || 'irrelevant' });
+        return null;
+      }
     }
 
     return {
@@ -155,8 +157,9 @@ export async function runBusinessContactSearch(input, userAgent) {
       linkedinUrl: enriched.linkedinUrl,
       whatsappUrl: enriched.whatsappUrl,
       phoneNumbers: enriched.phoneNumbers,
-      leadScore: enriched.relevance.leadScore,
-      relevanceType: enriched.relevance.relevanceType,
+      leadScore: enriched.relevance.detected ? enriched.relevance.leadScore : 'Low',
+      relevanceType: enriched.relevance.detected ? enriched.relevance.relevanceType : 'Indirect Lead',
+      destination: enriched.destination || 'General abroad',
       tags: enriched.relevance.tags || ['Indirect Lead'],
       locality: enriched.locality,
       notes: `Source: ${place.source}; Layer: ${place.layer || 'unknown'}; Query: ${place.query}; Local:${enriched.locality?.isLocal ? 'yes' : 'no'}`
@@ -167,7 +170,32 @@ export async function runBusinessContactSearch(input, userAgent) {
     .filter(Boolean)
     .sort((a, b) => (localRankBoost(b) + categoryPriority(b) * 10 + scoreRank(b.leadScore)) - (localRankBoost(a) + categoryPriority(a) * 10 + scoreRank(a.leadScore)));
 
-  const results = input.mode === 'full' ? ranked : ranked.slice(0, input.limit);
+  let results = input.mode === 'full' ? ranked : ranked.slice(0, input.limit);
+
+  if (!results.length) {
+    const partial = deduped
+      .filter((p) => p.website)
+      .slice(0, Math.max(5, input.limit))
+      .map((p) => ({
+        email: null,
+        website: p.website,
+        facebookUrl: p.website.includes("facebook.com") ? p.website : null,
+        businessName: p.name,
+        country: input.country,
+        contactApplyPage: null,
+        instagramUrl: null,
+        linkedinUrl: null,
+        whatsappUrl: null,
+        phoneNumbers: [],
+        leadScore: "Low",
+        relevanceType: "Indirect Lead",
+        destination: "General abroad",
+        tags: ["Indirect Lead"],
+        locality: { isLocal: true },
+        notes: `Fallback discovery lead; Source: ${p.source}; Layer: ${p.layer || "unknown"}; Query: ${p.query}`
+      }));
+    if (partial.length) results = partial;
+  }
 
   const response = {
     requested: { ...input, categories: input.categories.map((c) => CATEGORY_LABELS[c]) },
