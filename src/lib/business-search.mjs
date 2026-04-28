@@ -159,7 +159,7 @@ export async function runBusinessContactSearch(input, userAgent) {
       relevanceType: enriched.relevance.relevanceType,
       tags: enriched.relevance.tags || ['Indirect Lead'],
       locality: enriched.locality,
-      notes: `Source: ${place.source}; Query: ${place.query}; Local:${enriched.locality?.isLocal ? 'yes' : 'no'}`
+      notes: `Source: ${place.source}; Layer: ${place.layer || 'unknown'}; Query: ${place.query}; Local:${enriched.locality?.isLocal ? 'yes' : 'no'}`
     };
   });
 
