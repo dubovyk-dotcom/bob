@@ -10,42 +10,92 @@ export const CATEGORY_LABELS = {
   usaOrganizations: 'USA Organizations'
 };
 
+const LANGUAGE_MAP = {
+  USA: ['en'], Canada: ['en', 'fr'], Mexico: ['es', 'en'],
+  Brazil: ['pt', 'en'], Argentina: ['es', 'en'], Chile: ['es', 'en'], Colombia: ['es', 'en'], Peru: ['es', 'en'], Ecuador: ['es', 'en'], Bolivia: ['es', 'en'], Uruguay: ['es', 'en'],
+  UK: ['en'], France: ['fr', 'en'], Germany: ['de', 'en'], Spain: ['es', 'en'], Italy: ['it', 'en'], Poland: ['pl', 'en'], Ukraine: ['uk', 'ru', 'en'], Turkey: ['tr', 'en'],
+  Morocco: ['ar', 'fr', 'en'], Algeria: ['ar', 'fr', 'en'], Tunisia: ['ar', 'fr', 'en'], Egypt: ['ar', 'en'], Nigeria: ['en'], Kenya: ['en', 'sw'], Ghana: ['en'], 'South Africa': ['en'], Ethiopia: ['am', 'en'], Madagascar: ['fr', 'mg', 'en'],
+  China: ['zh', 'en'], Japan: ['ja', 'en'], 'South Korea': ['ko', 'en'], India: ['en', 'hi'], Pakistan: ['ur', 'en'], Bangladesh: ['bn', 'en'], Vietnam: ['vi', 'en'], Thailand: ['th', 'en'], Indonesia: ['id', 'en'], Philippines: ['en', 'tl'], Malaysia: ['ms', 'en'], 'Sri Lanka': ['si', 'en'], Nepal: ['ne', 'en'],
+  UAE: ['ar', 'en'], 'Saudi Arabia': ['ar', 'en'], Qatar: ['ar', 'en'], Jordan: ['ar', 'en'], Israel: ['he', 'en'],
+  Australia: ['en'], 'New Zealand': ['en']
+};
+
+const COUNTRY_TLD = {
+  Madagascar: 'mg', China: 'cn', Brazil: 'br', Morocco: 'ma', Vietnam: 'vn', Nepal: 'np', Ghana: 'gh', Philippines: 'ph'
+};
+
+const ENGLISH_INTENTS = ['J1 visa agency', 'work and travel USA', 'internship USA', 'hospitality placement USA'];
+
+const LOCAL_TRANSLATIONS = {
+  fr: ['agence J1 USA', 'travail et voyage USA', 'stage USA', 'placement hôtellerie USA'],
+  es: ['agencia J1 USA', 'trabajo y viaje USA', 'prácticas USA', 'colocación hospitalidad USA'],
+  pt: ['agência J1 EUA', 'intercâmbio trabalho EUA', 'estágio EUA', 'colocação hotelaria EUA'],
+  zh: ['J1 美国 项目', '美国 实习 中介', '出国 工作 美国', '美国 交换 项目'],
+  vi: ['J1 Mỹ tuyển dụng', 'thực tập Mỹ', 'việc làm Mỹ chương trình', 'placement hospitality Mỹ'],
+  ar: ['وكالة J1 امريكا', 'برنامج عمل وسفر امريكا', 'تدريب امريكا', 'توظيف ضيافة امريكا'],
+  de: ['J1 Agentur USA', 'Work and Travel USA', 'Praktikum USA', 'Hotelvermittlung USA'],
+  it: ['agenzia J1 USA', 'work and travel USA', 'tirocinio USA', 'collocamento ospitalità USA'],
+  pl: ['agencja J1 USA', 'work and travel USA', 'staż USA', 'rekrutacja hotelarska USA'],
+  tr: ['J1 ajansı ABD', 'work and travel ABD', 'staj ABD', 'otelcilik yerleştirme ABD'],
+  uk: ['агенція J1 США', 'робота і подорож США', 'стажування США', 'готельне працевлаштування США'],
+  ru: ['агентство J1 США', 'работа и путешествие США', 'стажировка США', 'гостиничное трудоустройство США'],
+  ja: ['J1 代理店 アメリカ', 'ワークアンドトラベル アメリカ', 'インターン アメリカ', 'ホスピタリティ 配置 アメリカ'],
+  ko: ['J1 에이전시 미국', '워크앤트래블 미국', '인턴십 미국', '호텔 취업 미국'],
+  hi: ['J1 एजेंसी USA', 'वर्क एंड ट्रैवल USA', 'इंटर्नशिप USA', 'हॉस्पिटैलिटी प्लेसमेंट USA'],
+  ur: ['J1 ایجنسی USA', 'ورک اینڈ ٹریول USA', 'انٹرن شپ USA', 'ہاسپیٹیلٹی پلیسمنٹ USA'],
+  bn: ['J1 এজেন্সি USA', 'ওয়ার্ক অ্যান্ড ট্রাভেল USA', 'ইন্টার্নশিপ USA', 'হসপিটালিটি প্লেসমেন্ট USA'],
+  th: ['เอเจนซี่ J1 สหรัฐ', 'work and travel USA', 'ฝึกงาน USA', 'จัดหางานโรงแรม USA'],
+  id: ['agensi J1 USA', 'work and travel USA', 'magang USA', 'penempatan hospitality USA'],
+  tl: ['ahensya J1 USA', 'work and travel USA', 'internship USA', 'hospitality placement USA'],
+  ms: ['agensi J1 USA', 'work and travel USA', 'latihan industri USA', 'penempatan hospitaliti USA'],
+  si: ['J1 ආයතනය USA', 'work and travel USA', 'internship USA', 'hospitality placement USA'],
+  ne: ['J1 एजेन्सी USA', 'work and travel USA', 'internship USA', 'hospitality placement USA'],
+  sw: ['wakala J1 USA', 'kazi na safari USA', 'internship USA', 'hospitality placement USA'],
+  am: ['J1 ኤጀንሲ USA', 'work and travel USA', 'internship USA', 'hospitality placement USA'],
+  he: ['סוכנות J1 ארה"ב', 'work and travel USA', 'התמחות USA', 'השמה אירוח USA'],
+  mg: ['agence J1 USA', 'asa sy dia USA', 'stage USA', 'fametrahana hospitality USA']
+};
+
 const CATEGORY_QUERIES = {
-  agencies: ['Work and Travel USA agency', 'J1 visa agency', 'exchange program agency', 'student placement USA'],
-  hotels: ['hotel recruitment USA', 'hotel employer hospitality trainees'],
-  resorts: ['resort employer hospitality trainees', 'seasonal resort jobs USA'],
-  restaurants: ['restaurant employer hospitality trainees', 'culinary placement USA'],
-  hospitalityGroups: ['hospitality group recruitment USA', 'hospitality management trainees USA'],
-  seasonalEmployers: ['seasonal employer USA recruitment', 'saisonnier USA recrutement'],
-  tourismOperators: ['tourism operator recruitment USA', 'agence voyage travail USA'],
-  schools: ['hospitality school USA internship', 'tourism college USA training'],
+  agencies: ['recruitment agency USA', 'exchange program agency'],
+  hotels: ['hotel employer hospitality trainees'],
+  resorts: ['resort employer seasonal jobs'],
+  restaurants: ['restaurant employer culinary trainees'],
+  hospitalityGroups: ['hospitality group recruitment'],
+  seasonalEmployers: ['seasonal employer recruitment usa'],
+  tourismOperators: ['tourism operator recruitment usa'],
+  schools: ['hospitality school usa internship', 'tourism college usa training'],
   usaOrganizations: ['U.S. exchange visitor organization', 'DS-2019 sponsor partner']
 };
 
-const COUNTRY_LOCAL_EXPANSIONS = ({ country }) => [
-  `${country} Work and Travel USA agency`,
-  `${country} J1 visa agency`,
-  `${country} hospitality recruitment USA`,
-  `${country} student placement USA`,
-  `${country} exchange program agency`,
-  `${country} recrutement USA`,
-  `${country} agence voyage travail USA`,
-  `${country} recrutement saisonnier USA`
-];
+function getLanguages(country) {
+  return LANGUAGE_MAP[country] || ['en'];
+}
 
-const FALLBACK_EXPANSION = ({ country }) => [
-  `${country} facebook work and travel agency`,
-  `${country} facebook recrutement usa`,
-  `${country} local hospitality employer`
-];
+function countryTld(country) {
+  return COUNTRY_TLD[country] || country.slice(0, 2).toLowerCase();
+}
 
 function buildIntentQueries({ categories, city, state, country, isFallback = false }) {
-  const location = [city, state].filter(Boolean).join(', ');
-  const base = COUNTRY_LOCAL_EXPANSIONS({ country });
-  const categorySeeds = categories.flatMap((category) => (CATEGORY_QUERIES[category] || []).map((seed) => `${country} ${seed}`));
-  const all = [...base, ...categorySeeds];
-  if (isFallback) all.push(...FALLBACK_EXPANSION({ country }));
-  return [...new Set(all)].map((q) => (location ? `${q}, ${location}` : q));
+  const loc = [city, state].filter(Boolean).join(', ');
+  const langs = getLanguages(country);
+
+  // PASS 1 English
+  const pass1 = ENGLISH_INTENTS.map((q) => `${country} ${q}`);
+
+  // PASS 2 local language
+  const pass2 = langs.flatMap((lang) => (LOCAL_TRANSLATIONS[lang] || []).map((q) => `${country} ${q}`));
+
+  // PASS 3 hybrid
+  const categoryHybrid = categories.flatMap((cat) => (CATEGORY_QUERIES[cat] || []).map((q) => `${country} ${q} USA hospitality recruitment`));
+
+  // PASS 4 social fallback
+  const pass4 = [`${country} facebook work abroad agency`, `${country} facebook recruitment usa`, `${country} linkedin recruitment usa`];
+
+  const booster = [`site:.${countryTld(country)} ${country} recruitment agency usa`, `${country} work abroad agency`, `facebook page work abroad ${country}`];
+
+  const all = [...pass1, ...pass2, ...categoryHybrid, ...pass4, ...(isFallback ? booster : [])];
+  return [...new Set(all)].map((q) => (loc ? `${q}, ${loc}` : q));
 }
 
 function normalizePlace(place, query, source) {
@@ -60,13 +110,9 @@ function normalizePlace(place, query, source) {
 }
 
 async function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal, redirect: 'follow' });
-  } finally {
-    clearTimeout(timer);
-  }
+  const c = new AbortController();
+  const t = setTimeout(() => c.abort(), timeoutMs);
+  try { return await fetch(url, { ...options, signal: c.signal, redirect: 'follow' }); } finally { clearTimeout(t); }
 }
 
 async function discoverFromNominatim(query, userAgent, limit) {
@@ -75,85 +121,74 @@ async function discoverFromNominatim(query, userAgent, limit) {
   url.searchParams.set('format', 'jsonv2');
   url.searchParams.set('addressdetails', '1');
   url.searchParams.set('extratags', '1');
-  url.searchParams.set('namedetails', '1');
   url.searchParams.set('limit', String(limit));
-  const response = await fetchWithTimeout(url, { headers: { 'User-Agent': userAgent, Accept: 'application/json' } });
-  if (!response.ok) return [];
-  return (await response.json()).map((place) => normalizePlace(place, query, 'Nominatim'));
+  const res = await fetchWithTimeout(url, { headers: { 'User-Agent': userAgent, Accept: 'application/json' } });
+  if (!res.ok) return [];
+  return (await res.json()).map((p) => normalizePlace(p, query, 'Nominatim'));
 }
 
-const stripTags = (value = '') => value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+const stripTags = (v = '') => v.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
 async function discoverFromDuckDuckGo(query, userAgent, limit) {
   const url = new URL('https://duckduckgo.com/html/');
   url.searchParams.set('q', query);
-  const response = await fetchWithTimeout(url, { headers: { 'User-Agent': userAgent, Accept: 'text/html,application/xhtml+xml' } });
-  if (!response.ok) return [];
-  const html = await response.text();
+  const res = await fetchWithTimeout(url, { headers: { 'User-Agent': userAgent, Accept: 'text/html,application/xhtml+xml' } });
+  if (!res.ok) return [];
+  const html = await res.text();
 
-  const parsed = [];
+  const out = [];
   const regex = /<a[^>]+href="([^"]*uddg=[^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
-  let match;
-  while ((match = regex.exec(html)) !== null && parsed.length < limit) {
-    const decoded = decodeURIComponent((match[1].split('uddg=')[1] || '').split('&')[0] || '');
+  let m;
+  while ((m = regex.exec(html)) !== null && out.length < limit) {
+    const decoded = decodeURIComponent((m[1].split('uddg=')[1] || '').split('&')[0] || '');
     if (!decoded.startsWith('http')) continue;
-    const title = stripTags(match[2]);
-    parsed.push(normalizePlace({ title, snippet: title, url: decoded, address: title }, query, 'DuckDuckGo'));
+    out.push(normalizePlace({ title: stripTags(m[2]), url: decoded, address: stripTags(m[2]) }, query, 'DuckDuckGo'));
   }
-
-  const fbQuery = `${query} site:facebook.com`;
-  if (parsed.length < Math.ceil(limit / 2)) {
-    const fbUrl = new URL('https://duckduckgo.com/html/');
-    fbUrl.searchParams.set('q', fbQuery);
-    const fbRes = await fetchWithTimeout(fbUrl, { headers: { 'User-Agent': userAgent, Accept: 'text/html,application/xhtml+xml' } });
-    if (fbRes.ok) {
-      const fbHtml = await fbRes.text();
-      regex.lastIndex = 0;
-      while ((match = regex.exec(fbHtml)) !== null && parsed.length < limit) {
-        const decoded = decodeURIComponent((match[1].split('uddg=')[1] || '').split('&')[0] || '');
-        if (!decoded.startsWith('http')) continue;
-        const title = stripTags(match[2]);
-        parsed.push(normalizePlace({ title, snippet: title, url: decoded, address: title }, `${query} (facebook)`, 'DuckDuckGo'));
-      }
-    }
-  }
-
-  return parsed;
+  return out;
 }
 
 export async function discoverBusinesses({ categories, city, state, country, limit, mode, userAgent, debugLog = () => {} }) {
-  const runDiscovery = async (isFallback) => {
+  const run = async (isFallback) => {
     const queries = buildIntentQueries({ categories, city, state, country, isFallback });
-    const perQueryLimit = mode === 'full' ? 12 : Math.max(4, Math.ceil((limit * 2) / Math.max(1, queries.length)));
+    const perQuery = mode === 'full' ? 10 : Math.max(3, Math.ceil((limit * 2) / Math.max(1, queries.length)));
     const all = [];
 
     for (const query of queries) {
-      debugLog('query.start', { query, providers: ['Nominatim', 'DuckDuckGo'] });
+      debugLog('query.start', { query, providers: ['Nominatim', 'DuckDuckGo'], pass: isFallback ? 'booster' : 'main' });
       try {
-        const [nomi, ddg] = await Promise.all([discoverFromNominatim(query, userAgent, perQueryLimit), discoverFromDuckDuckGo(query, userAgent, perQueryLimit)]);
-        all.push(...nomi, ...ddg);
-        debugLog('query.results', { query, nominatim: nomi.length, duckduckgo: ddg.length, total: nomi.length + ddg.length });
-      } catch (error) {
-        debugLog('query.error', { query, error: error.message });
+        const [a, b] = await Promise.all([discoverFromNominatim(query, userAgent, perQuery), discoverFromDuckDuckGo(query, userAgent, perQuery)]);
+        all.push(...a, ...b);
+        debugLog('query.results', { query, nominatim: a.length, duckduckgo: b.length, total: a.length + b.length });
+      } catch (e) {
+        debugLog('query.error', { query, error: e.message });
       }
     }
 
-    const deduped = [];
+    const dedup = [];
     const seen = new Set();
     for (const item of all) {
       const key = `${item.name}-${item.website || item.address}`.toLowerCase();
       if (seen.has(key)) continue;
       seen.add(key);
-      deduped.push(item);
+      dedup.push(item);
     }
-    return deduped;
+    return dedup;
   };
 
-  let leads = await runDiscovery(false);
-  if (!leads.length) {
-    debugLog('fallback.trigger', { reason: 'zero_discovery_primary' });
-    leads = await runDiscovery(true);
+  let leads = await run(false);
+  if (leads.length < 5) {
+    debugLog('fallback.trigger', { reason: 'weak_results' });
+    leads = [...leads, ...(await run(true))];
   }
 
-  return mode === 'full' ? leads : leads.slice(0, Math.max(limit * 5, 50));
+  const uniq = [];
+  const seen = new Set();
+  for (const x of leads) {
+    const k = `${x.name}-${x.website || x.address}`.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    uniq.push(x);
+  }
+
+  return mode === 'full' ? uniq : uniq.slice(0, Math.max(limit * 5, 60));
 }

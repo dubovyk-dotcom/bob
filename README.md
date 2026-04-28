@@ -1,39 +1,18 @@
-# USA Partner Lead Engine (Local-Country First)
+# USA Partner Lead Engine (Global Multilingual)
 
-## What this update fixes
+This version upgrades discovery into a **global multilingual lead engine**.
 
-- Restores employer categories: Hotels, Resorts, Restaurants, Hospitality Groups, Seasonal Employers, Tourism Operators.
-- Prioritizes country-local results (example: Madagascar should show Madagascar organizations first).
-- Expands local-market discovery with French/local query variants.
-- Keeps broad contact acceptance (website/Facebook/Instagram/LinkedIn/WhatsApp/phone/contact form).
-- Adds UI filters for Agencies/Hotels/Restaurants/Schools/USA Organizations/Facebook-only/Website-only.
+## Highlights
 
-## Search category modes
-
-You can combine categories to create practical modes:
-
-- Agencies only
-- Employers only
-- Agencies + Employers
-- Schools only
-- All categories
-
-## Ranking behavior
-
-For a country search (e.g., Madagascar), ranking is local-first:
-
-1. Local agencies
-2. Local hotels/restaurants/employers
-3. Local schools
-4. Regional/foreign with local signal
-5. U.S.-based fallback organizations
-
-## Exports and table
-
-- Export CSV
-- Export Excel
-- Copy Emails / Websites / Facebook
-- Sortable compact table: `Email | Website | Facebook | Name | Score`
+- Region/country-based language model (English + local language fallback).
+- 4-pass query engine for every search:
+  1. English intent pass
+  2. Local-language pass
+  3. Hybrid country+recruitment+USA pass
+  4. Social fallback pass (Facebook/LinkedIn focused)
+- Local discovery booster when results are weak (`site:.tld`, recruitment agency boosters).
+- Keeps broad contact acceptance (no email requirement).
+- Local-country-first ranking and filtering.
 
 ## Run
 
@@ -42,3 +21,5 @@ cp .env.example .env
 npm install
 npm start
 ```
+
+Open: http://127.0.0.1:3005
