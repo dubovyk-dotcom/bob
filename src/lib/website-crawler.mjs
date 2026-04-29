@@ -1,6 +1,7 @@
 const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
 const URL_REGEX = /https?:\/\/[^\s"'<>]+/gi;
 const PHONE_REGEX = /(?:\+?\d{1,3}[\s.-]?)?(?:\(?\d{2,4}\)?[\s.-]?)\d{3,4}[\s.-]?\d{3,4}/g;
+const PDF_LINK_REGEX = /https?:\/\/[^\s"'<>]+\.pdf/gi;
 
 const EXCLUSION_SIGNALS = ['backpacking', 'travel blog', 'volunteer', 'tour package', 'embassy', 'state department', 'visa news', 'immigration law', 'affiliate', 'top 10'];
 
@@ -94,6 +95,27 @@ async function fetchTextWithRetry(url, userAgent, debugLog, retries = 2) {
       debugLog('crawl.error', { url, attempt, error: error.message });
       if (attempt === retries + 1) return null;
     } finally { clearTimeout(timer); }
+  }
+  return null;
+}
+
+
+async function fetchBinaryWithRetry(url, userAgent, debugLog, retries = 1) {
+  for (let attempt = 1; attempt <= retries + 1; attempt += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12000);
+    try {
+      const res = await fetch(url, { redirect: 'follow', headers: { 'User-Agent': userAgent }, signal: controller.signal });
+      if (!res.ok) continue;
+      const buf = Buffer.from(await res.arrayBuffer());
+      debugLog('crawl.binary_success', { url, bytes: buf.length, attempt });
+      return buf.toString('utf8');
+    } catch (error) {
+      debugLog('crawl.binary_error', { url, attempt, error: error.message });
+      if (attempt === retries + 1) return null;
+    } finally {
+      clearTimeout(timer);
+    }
   }
   return null;
 }
@@ -221,10 +243,28 @@ export async function enrichLeadFromWebsite(place, userAgent, debugLog = () => {
     links.mailto.forEach((x) => emails.add(x.toLowerCase()));
     links.contactApplyPages.forEach((x) => contactPages.add(x));
     links.formPages.forEach((x) => formPages.add(x));
+
+    const pdfLinks = (html.match(PDF_LINK_REGEX) || []).slice(0, 4);
+    for (const pdfUrl of pdfLinks) {
+      const pdfText = await fetchBinaryWithRetry(pdfUrl, userAgent, debugLog);
+      if (!pdfText) continue;
+      extractEmails(pdfText).forEach((x) => emails.add(x));
+      extractPhones(pdfText).forEach((x) => phones.add(x));
+      combinedText += ` ${pdfText}`;
+    }
   };
 
   for (const url of urlsToVisit) await crawlAndExtract(url);
   for (const url of [...contactPages].slice(0, 6)) if (!visited.includes(url)) await crawlAndExtract(url);
+
+  if (facebookUrl && !visited.includes(facebookUrl)) {
+    const fbHtml = await fetchTextWithRetry(facebookUrl, userAgent, debugLog, 1);
+    if (fbHtml) {
+      combinedText += ` ${fbHtml}`;
+      extractEmails(fbHtml).forEach((x) => emails.add(x));
+      extractPhones(fbHtml).forEach((x) => phones.add(x));
+    }
+  }
 
   const relevance = classifyLead(combinedText);
   const destination = classifyDestination(combinedText);

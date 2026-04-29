@@ -74,6 +74,11 @@ async function exportFormat(format) {
     URL.revokeObjectURL(url);
   } else if (format === 'xlsx' && data.export.format === 'copy') {
     navigator.clipboard.writeText(data.export.content);
+    const btn = document.querySelector('#export-xlsx');
+    if (btn) {
+      btn.disabled = true;
+      btn.title = 'XLSX unavailable in current environment; using Copy Table fallback';
+    }
   } else {
     downloadContent(data.export.content, data.export.filename, type);
   }
